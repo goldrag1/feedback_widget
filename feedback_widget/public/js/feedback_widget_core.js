@@ -1189,6 +1189,10 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     // ---------- v1.1: context capture ----------
     _initContextCapture() {
       const max = Math.max(5, this.cfg.contextHistorySize | 0 || 20);
+      const pushErr = (entry) => {
+        this._consoleErrors.push(entry);
+        if (this._consoleErrors.length > max) this._consoleErrors.shift();
+      };
       // Click trail (passive, capture phase, ignores widget's own elements)
       document.addEventListener('click', (e) => {
         const t = e.target;
@@ -1196,9 +1200,10 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         if (t.closest('.fbw-fab, .fbw-sheet, .fbw-backdrop, .fbw-picker-banner, .fbw-picker-highlight')) return;
         this._pushAction({ type: 'click', target: this._terseSelector(t), ts: Date.now() }, max);
       }, true);
-      // Console errors (passive)
+
+      // Uncaught script errors — bubble up to window (passive)
       window.addEventListener('error', (e) => {
-        this._consoleErrors.push({
+        pushErr({
           type: 'error',
           message: String(e && e.message || '').slice(0, 300),
           source: String(e && e.filename || '').slice(0, 200),
@@ -1206,18 +1211,62 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
           col: (e && e.colno) | 0,
           ts: Date.now(),
         });
-        if (this._consoleErrors.length > max) this._consoleErrors.shift();
       });
+      // Unhandled promise rejections (no .catch, no await in catch context)
       window.addEventListener('unhandledrejection', (e) => {
         const reason = e && e.reason;
         const msg = (reason && (reason.message || reason.toString())) || '';
-        this._consoleErrors.push({
+        pushErr({
           type: 'rejection',
           message: String(msg).slice(0, 300),
           ts: Date.now(),
         });
-        if (this._consoleErrors.length > max) this._consoleErrors.shift();
       });
+
+      // v1.4 — explicit console.error / console.warn calls.
+      // Window's 'error' event does NOT fire for these — modern browsers
+      // route console.* directly to DevTools without dispatching events.
+      // Monkey-patch to push to the ring buffer, then forward to the
+      // original so DevTools still shows everything in its native form.
+      const formatArg = (a) => {
+        if (a == null) return String(a);
+        if (typeof a === 'string') return a;
+        if (a instanceof Error) return a.stack || a.message || String(a);
+        try { return JSON.stringify(a); }
+        catch (_e) { return String(a); }
+      };
+      const formatArgs = (args) => Array.prototype.map.call(args, formatArg).join(' ').slice(0, 500);
+
+      if (typeof console !== 'undefined') {
+        const origError = console.error && console.error.bind(console);
+        if (origError && !console.__fbwPatched) {
+          console.error = function () {
+            try {
+              pushErr({
+                type: 'console.error',
+                message: formatArgs(arguments),
+                ts: Date.now(),
+              });
+            } catch (_e) {}
+            return origError.apply(console, arguments);
+          };
+        }
+        const origWarn = console.warn && console.warn.bind(console);
+        if (origWarn && !console.__fbwPatched) {
+          console.warn = function () {
+            try {
+              pushErr({
+                type: 'console.warn',
+                message: formatArgs(arguments),
+                ts: Date.now(),
+              });
+            } catch (_e) {}
+            return origWarn.apply(console, arguments);
+          };
+        }
+        // Idempotency flag — prevents double-patching if widget remounts
+        try { console.__fbwPatched = true; } catch (_e) {}
+      }
       // Frappe route change (only when frappe is present)
       try {
         if (typeof window.frappe !== 'undefined' && window.frappe.router && typeof window.frappe.router.on === 'function') {
