@@ -63,7 +63,14 @@
     enableTags: true,               // type + severity chips above textarea
     enablePointer: true,            // 📍 element-pointer button
     enableContext: true,            // auto-capture context bundle on send
+    enableAttach: true,             // 📎 image attachment (file picker + paste)
     contextHistorySize: 20,         // ring-buffer length for actions + errors
+    uploadEndpoint: '/api/method/upload_file',  // Frappe-shaped; override for non-Frappe hosts
+    uploadFieldName: 'file',        // multipart field name expected by uploadEndpoint
+    uploadExtraFields: { is_private: '1', folder: 'Home/Feedback' },  // extra form fields
+    uploadIsPrivate: true,          // hint to host (also tells display to use private url)
+    maxAttachments: 10,             // Telegram media-group max
+    maxAttachmentBytes: 8 * 1024 * 1024,  // 8MB per file (Telegram bot limit is 10MB)
     // v1.1 — host integration callbacks (all optional)
     getScreenId: null,              // () => string  (already in v1.0)
     getScreenName: null,            // () => string  (already in v1.0)
@@ -128,6 +135,13 @@
       pick_active: 'Bấm vào chỗ anh/chị muốn nói. ESC để hủy.',
       pick_active_touch: 'Chạm vào chỗ muốn nói (cuộn nếu cần) · chạm hai ngón để hủy',
       pick_clear_aria: 'Bỏ chọn',
+      attach_btn: '📎 Đính ảnh',
+      attach_btn_short: '📎',
+      attach_clear_aria: 'Bỏ ảnh này',
+      attach_too_big: 'Ảnh quá lớn (tối đa 8MB) — bỏ qua',
+      attach_too_many: 'Đã tới giới hạn 10 ảnh',
+      attach_uploading: 'Đang tải ảnh lên...',
+      attach_upload_failed: 'Tải ảnh lên thất bại',
     },
     en: {
       fab_title: 'Leave feedback on this screen',
@@ -151,6 +165,13 @@
       pick_active: 'Click the element you mean. ESC to cancel.',
       pick_active_touch: 'Tap the element you mean (scroll if needed) · 2-finger tap to cancel',
       pick_clear_aria: 'Clear pick',
+      attach_btn: '📎 Attach image',
+      attach_btn_short: '📎',
+      attach_clear_aria: 'Remove this image',
+      attach_too_big: 'Image too large (max 8MB) — skipped',
+      attach_too_many: 'Hit 10-image limit',
+      attach_uploading: 'Uploading images...',
+      attach_upload_failed: 'Upload failed',
     },
   };
 
@@ -433,10 +454,12 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
 @media (pointer: coarse) {
   .fbw-fab           { width: 56px; height: 56px; border-radius: 28px; font-size: 26px; }
   .fbw-pick-btn,
+  .fbw-attach-btn,
   .fbw-send          { width: 44px; height: 44px; border-radius: 22px; font-size: 18px; }
   .fbw-close-btn     { width: 36px; height: 36px; border-radius: 18px; font-size: 22px; }
   .fbw-picked-clear  { width: 28px; height: 28px; border-radius: 14px; font-size: 18px; }
   .fbw-chip          { padding: 6px 12px; font-size: 13px; }
+  .fbw-thumb         { width: 64px; height: 64px; }
   /* Picker highlight is thicker on touch so it's visible past the user's
      finger. Use a contrasting outer glow as well. */
   .fbw-picker-highlight {
@@ -445,6 +468,69 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
   }
   .fbw-picker-banner { font-size: 14px; padding: 10px 16px; max-width: 90vw; }
 }
+
+/* ---- v1.3: image attachments ---- */
+.fbw-attach-btn {
+  background: white; color: #4b5563;
+  border: 1px solid #e5e7eb;
+  padding: 0; width: 38px; height: 38px;
+  border-radius: 19px;
+  font: inherit; font-size: 16px; line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.fbw-attach-btn:hover { background: #f9fafb; }
+.fbw-attach-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+.fbw-attached {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 6px;
+}
+.fbw-thumb {
+  position: relative;
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  overflow: visible;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+.fbw-thumb-img {
+  width: 100%; height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+.fbw-thumb-clear {
+  position: absolute; top: -6px; right: -6px;
+  width: 20px; height: 20px; border-radius: 10px;
+  background: #ef4444; color: white; border: 2px solid white;
+  font-size: 11px; line-height: 1; cursor: pointer;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.fbw-thumb.fbw-uploading .fbw-thumb-img { opacity: 0.4; }
+.fbw-thumb.fbw-uploading::after {
+  content: '↑';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #1f3a5f; font-size: 18px; font-weight: 600;
+  animation: fbw-pulse 1s ease-in-out infinite;
+  pointer-events: none;
+}
+.fbw-thumb.fbw-failed { border-color: #ef4444; }
+.fbw-thumb.fbw-failed::after {
+  content: '✕';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #b91c1c; font-size: 16px; font-weight: 600;
+  background: rgba(239, 68, 68, 0.15);
+  border-radius: 8px;
+  pointer-events: none;
+}
+@keyframes fbw-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 `;
 
   // ---------- Helpers ----------
@@ -489,6 +575,10 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this.tags = this._loadTags();
       // v1.1 — picked element (cleared after each send)
       this.pickedElement = null;
+      // v1.3 — attachments [{file, blobUrl, file_url?, file_name, file_size, mime, status}]
+      // status: 'pending' | 'uploading' | 'uploaded' | 'failed'
+      this.attachments = [];
+      this._attachIdCounter = 0;
       // v1.1 — ring buffers for context bundle (initialised on mount)
       this._recentActions = [];
       this._consoleErrors = [];
@@ -606,6 +696,10 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       const pickerBtn = this.cfg.enablePointer
         ? `<button class="fbw-pick-btn" type="button" id="fbw-pick" aria-label="${escapeHtml(this.copy.pick_btn)}" title="${escapeHtml(this.copy.pick_btn)}">${escapeHtml(this.copy.pick_btn_short)}</button>`
         : '';
+      const attachBtn = this.cfg.enableAttach
+        ? `<button class="fbw-attach-btn" type="button" id="fbw-attach" aria-label="${escapeHtml(this.copy.attach_btn)}" title="${escapeHtml(this.copy.attach_btn)}">${escapeHtml(this.copy.attach_btn_short)}</button>
+           <input type="file" id="fbw-attach-input" multiple accept="image/*" style="display:none" aria-hidden="true">`
+        : '';
 
       sheet.innerHTML = `
         <div class="fbw-header">
@@ -624,8 +718,10 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
             <code class="fbw-picked-sel" id="fbw-picked-sel"></code>
             <button class="fbw-picked-clear" id="fbw-picked-clear" type="button" aria-label="${escapeHtml(this.copy.pick_clear_aria)}">×</button>
           </div>
+          <div class="fbw-attached" id="fbw-attached" style="display:none"></div>
           <div class="fbw-input-row">
             ${pickerBtn}
+            ${attachBtn}
             <textarea id="fbw-msg" rows="1" placeholder="${escapeHtml(this.copy.msg_placeholder)}"></textarea>
             <button class="fbw-send" id="fbw-send" disabled aria-label="${escapeHtml(this.copy.send_aria)}">➤</button>
           </div>
@@ -646,6 +742,9 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this.els.picked = sheet.querySelector('#fbw-picked');
       this.els.pickedSel = sheet.querySelector('#fbw-picked-sel');
       this.els.pickedClear = sheet.querySelector('#fbw-picked-clear');
+      this.els.attach = sheet.querySelector('#fbw-attach');
+      this.els.attachInput = sheet.querySelector('#fbw-attach-input');
+      this.els.attached = sheet.querySelector('#fbw-attached');
     }
 
     _wireEvents() {
@@ -703,6 +802,30 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         this.els.pickedClear.addEventListener('click', () => {
           this.pickedElement = null;
           this._renderPicked();
+        });
+      }
+
+      // v1.3 — attachments: click 📎 → file picker, change → add files,
+      // paste → grab images from clipboard
+      if (this.els.attach && this.els.attachInput) {
+        this.els.attach.addEventListener('click', () => this.els.attachInput.click());
+        this.els.attachInput.addEventListener('change', e => {
+          const files = Array.from(e.target.files || []);
+          for (const f of files) this._addAttachment(f);
+          e.target.value = '';  // allow re-selecting same file later
+        });
+      }
+      if (this.cfg.enableAttach && this.els.msg) {
+        this.els.msg.addEventListener('paste', e => {
+          const items = (e.clipboardData && e.clipboardData.items) || [];
+          let captured = 0;
+          for (const it of items) {
+            if (it.kind === 'file' && /^image\//.test(it.type)) {
+              const f = it.getAsFile();
+              if (f) { this._addAttachment(f); captured++; }
+            }
+          }
+          if (captured > 0) e.preventDefault();  // suppress accidental text-paste of binary
         });
       }
     }
@@ -766,6 +889,16 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     async send() {
       const msg = this.els.msg.value.trim();
       if (!msg) return;
+
+      // v1.3 — upload any pending image attachments BEFORE building the
+      // payload. If any fail, we still send the comment (text + uploaded
+      // ones); the failed thumbs stay visible with a red mark so the user
+      // can retry by removing + re-attaching.
+      this.els.send.disabled = true;
+      if (this.attachments.length > 0) {
+        await this._uploadAllPending();
+      }
+
       const { id, name } = this.currentScreen;
       const data = this._load();
       const submitter = (data.submitter || this.els.name.value || '').trim() || `(${this.copy.anon})`;
@@ -783,6 +916,14 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       if (Object.keys(this.tags).length) entry.tags = Object.assign({}, this.tags);
       if (this.pickedElement) entry.pointed_element = this.pickedElement;
       if (this.cfg.enableContext) entry.context = this._buildContextBundle();
+      // v1.3 — only include successfully-uploaded attachments in the payload
+      const uploaded = this.attachments.filter(a => a.status === 'uploaded' && a.file_url);
+      if (uploaded.length) {
+        entry.attachments = uploaded.map(a => ({
+          file_url: a.file_url, file_name: a.file_name,
+          file_size: a.file_size, mime: a.mime,
+        }));
+      }
 
       // Optimistic local persist BEFORE network
       data.submitter = submitter;
@@ -790,12 +931,19 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       data.messages.push(entry);
       this._save(data);
 
-      // Clear input + picked element (tags stay sticky for audit walks)
+      // Clear input + picked element + attachments (tags stay sticky for
+      // audit walks)
       this.els.msg.value = '';
       this.els.msg.style.height = 'auto';
       this.els.send.disabled = true;
       this.pickedElement = null;
+      // Revoke object URLs for uploaded attachments + drop the array
+      for (const a of this.attachments) {
+        if (a.blobUrl) { try { URL.revokeObjectURL(a.blobUrl); } catch (_e) {} }
+      }
+      this.attachments = this.attachments.filter(a => a.status === 'failed');  // keep failures visible
       this._renderPicked();
+      this._renderAttached();
       this._renderHistory();
       this._updateFab();
 
@@ -1101,6 +1249,121 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       }
       const txt = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30);
       return tag + cls + (txt ? ` "${txt}${(el.textContent || '').trim().length > 30 ? '…' : ''}"` : '');
+    }
+
+    // ---------- v1.3: attachments ----------
+    _addAttachment(file) {
+      if (!file || !/^image\//.test(file.type)) return;
+      if (this.attachments.length >= this.cfg.maxAttachments) {
+        this._showStatus(this.copy.attach_too_many, 'error');
+        return;
+      }
+      if (file.size > this.cfg.maxAttachmentBytes) {
+        this._showStatus(this.copy.attach_too_big, 'error');
+        return;
+      }
+      const att = {
+        id: ++this._attachIdCounter,
+        file: file,
+        blobUrl: URL.createObjectURL(file),
+        file_name: file.name || `pasted-${Date.now()}.png`,
+        file_size: file.size,
+        mime: file.type,
+        status: 'pending',          // 'pending' | 'uploading' | 'uploaded' | 'failed'
+        file_url: null,             // populated after upload
+      };
+      this.attachments.push(att);
+      this._renderAttached();
+    }
+
+    _removeAttachment(id) {
+      const idx = this.attachments.findIndex(a => a.id === id);
+      if (idx < 0) return;
+      const a = this.attachments[idx];
+      if (a.blobUrl) { try { URL.revokeObjectURL(a.blobUrl); } catch (_e) {} }
+      this.attachments.splice(idx, 1);
+      this._renderAttached();
+    }
+
+    _renderAttached() {
+      if (!this.els.attached) return;
+      if (this.attachments.length === 0) {
+        this.els.attached.style.display = 'none';
+        this.els.attached.innerHTML = '';
+        return;
+      }
+      this.els.attached.style.display = 'flex';
+      this.els.attached.innerHTML = this.attachments.map(a => `
+        <div class="fbw-thumb ${a.status === 'uploading' ? 'fbw-uploading' : ''} ${a.status === 'failed' ? 'fbw-failed' : ''}" data-attid="${a.id}" title="${escapeHtml(a.file_name)}">
+          <img class="fbw-thumb-img" src="${a.blobUrl}" alt="">
+          <button class="fbw-thumb-clear" type="button" aria-label="${escapeHtml(this.copy.attach_clear_aria)}" data-clear="${a.id}">×</button>
+        </div>
+      `).join('');
+      // Wire clear buttons (delegate to avoid memory leaks across renders)
+      this.els.attached.querySelectorAll('.fbw-thumb-clear').forEach(btn => {
+        btn.addEventListener('click', () => this._removeAttachment(parseInt(btn.dataset.clear, 10)));
+      });
+    }
+
+    async _uploadAttachment(att) {
+      const fd = new FormData();
+      fd.append(this.cfg.uploadFieldName || 'file', att.file, att.file_name);
+      const extra = this.cfg.uploadExtraFields || {};
+      for (const k in extra) fd.append(k, extra[k]);
+      const headers = {};
+      if (typeof this.cfg.fetchHeaders === 'function') {
+        try {
+          const xtra = this.cfg.fetchHeaders() || {};
+          for (const k in xtra) if (xtra[k] != null) headers[k] = String(xtra[k]);
+        } catch (_e) {}
+      }
+      // NOTE: do NOT set Content-Type — browser must set it with boundary
+      const res = await fetch(this.cfg.uploadEndpoint, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers,
+        body: fd,
+      });
+      if (!res.ok) throw new Error('upload http ' + res.status);
+      const j = await res.json().catch(() => ({}));
+      // Frappe shape: { message: { file_url, file_name, ... } }
+      // Generic shape: { file_url, file_name, ... }
+      const m = (j && j.message) || j || {};
+      if (!m.file_url) throw new Error('upload no file_url');
+      return {
+        file_url: m.file_url,
+        file_name: m.file_name || att.file_name,
+        file_size: m.file_size || att.file_size,
+        mime: att.mime,
+      };
+    }
+
+    async _uploadAllPending() {
+      const pending = this.attachments.filter(a => a.status !== 'uploaded');
+      if (pending.length === 0) return true;
+      this._showStatus(this.copy.attach_uploading, '');
+      let allOk = true;
+      for (const att of pending) {
+        att.status = 'uploading';
+        this._renderAttached();
+        try {
+          const meta = await this._uploadAttachment(att);
+          Object.assign(att, meta);
+          att.status = 'uploaded';
+        } catch (e) {
+          att.status = 'failed';
+          allOk = false;
+        }
+        this._renderAttached();
+      }
+      return allOk;
+    }
+
+    _showStatus(text, kind) {
+      const st = this.els.status;
+      if (!st) return;
+      st.textContent = text || '';
+      st.className = 'fbw-status' + (kind === 'ok' ? ' fbw-ok' : kind === 'error' ? ' fbw-error' : '');
     }
 
     _buildContextBundle() {

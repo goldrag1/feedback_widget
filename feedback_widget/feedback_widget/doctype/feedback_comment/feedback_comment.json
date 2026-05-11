@@ -32,7 +32,11 @@
   "url",
   "user_agent",
   "context",
+  "section_attachments",
+  "attachments",
   "section_admin",
+  "telegram_pushed",
+  "telegram_message_id",
   "raw_payload"
  ],
  "fields": [
@@ -61,7 +65,11 @@
   {"fieldname": "url", "fieldtype": "Data", "label": "URL", "length": 500, "read_only": 1},
   {"fieldname": "user_agent", "fieldtype": "Small Text", "label": "User Agent", "read_only": 1},
   {"fieldname": "context", "fieldtype": "Code", "label": "Context Bundle (JSON)", "options": "JSON", "read_only": 1, "description": "URL, viewport, last 20 user actions, console errors, app metadata (DocType, docname, user, roles, version)"},
+  {"fieldname": "section_attachments", "fieldtype": "Section Break", "label": "Attachments", "collapsible": 1, "depends_on": "eval:doc.attachments"},
+  {"fieldname": "attachments", "fieldtype": "Code", "label": "Attachments (JSON)", "options": "JSON", "read_only": 1, "description": "Array of {file_url, file_name, file_size, mime} for each image attached to the feedback. Frappe File records hold the actual binary; click links in raw_payload preview to view."},
   {"fieldname": "section_admin", "fieldtype": "Section Break", "label": "Admin", "collapsible": 1, "collapsible_depends_on": "eval:0"},
+  {"fieldname": "telegram_pushed", "fieldtype": "Check", "label": "Telegram Pushed", "read_only": 1, "default": 0, "in_standard_filter": 1, "description": "Set to 1 once the Telegram notification has been delivered (or skipped because Telegram is not configured)."},
+  {"fieldname": "telegram_message_id", "fieldtype": "Data", "label": "Telegram Message ID", "read_only": 1, "length": 60},
   {"fieldname": "raw_payload", "fieldtype": "Code", "label": "Raw Payload (JSON)", "options": "JSON", "read_only": 1, "description": "Exact submission payload as received. Mirrored to sites/<site>/private/feedback/<project>.jsonl"}
  ],
  "links": [],

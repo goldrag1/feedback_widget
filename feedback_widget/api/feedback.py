@@ -28,12 +28,15 @@ if str(SHARED_PATH) not in sys.path:
     sys.path.insert(0, str(SHARED_PATH))
 
 try:
-    from feedback_handler import validate_payload, append_jsonl, FeedbackError  # type: ignore
+    from feedback_handler import validate_payload, append_jsonl, FeedbackError, default_telegram_summary  # type: ignore
 except Exception as e:  # pragma: no cover — dev-time guard
     raise ImportError(
         f"feedback_widget requires shared validator at {SHARED_PATH}/feedback_handler.py "
         f"(install or symlink the feedback-widget skill from ~/.claude/skills/). Original: {e}"
     )
+
+# Local Telegram notifier (stdlib multipart for sendPhoto / sendMediaGroup)
+from feedback_widget import notifier  # type: ignore
 
 
 def _normalise_payload(form_dict) -> dict:
@@ -111,6 +114,26 @@ def collect(**kwargs):
     except Exception:
         ts_dt = now_datetime()
 
+    # ─── Attachments — widget pre-uploads each image to /api/method/upload_file
+    # then includes [{file_url, file_name, file_size, mime}] here. The actual
+    # binaries are already living as Frappe File records; we just persist refs.
+    attachments_in = payload.get("attachments")
+    attachments_clean: list = []
+    if isinstance(attachments_in, list):
+        for a in attachments_in[:10]:  # cap at 10 (Telegram media group limit)
+            if not isinstance(a, dict):
+                continue
+            url = (a.get("file_url") or "").strip()
+            if not url or not url.startswith("/"):
+                continue
+            attachments_clean.append({
+                "file_url":  url[:500],
+                "file_name": (a.get("file_name") or "")[:200],
+                "file_size": int(a.get("file_size") or 0),
+                "mime":      (a.get("mime") or "")[:100],
+            })
+    entry["attachments"] = attachments_clean  # propagate to raw_payload + jsonl
+
     doc = frappe.get_doc({
         "doctype": "Feedback Comment",
         "project": entry["project"],
@@ -131,6 +154,8 @@ def collect(**kwargs):
         "url": (ctx.get("url") or "")[:500] or None,
         "user_agent": entry.get("user_agent") or None,
         "context": json.dumps(ctx, ensure_ascii=False) if ctx else None,
+        "attachments": json.dumps(attachments_clean, ensure_ascii=False) if attachments_clean else None,
+        "telegram_pushed": 0,
         "raw_payload": json.dumps(entry, ensure_ascii=False),
     })
     doc.flags.ignore_permissions = False
@@ -149,11 +174,101 @@ def collect(**kwargs):
         # Log but don't fail the request — DocType insert already succeeded.
         frappe.log_error(message=str(e), title="feedback_widget jsonl mirror failed")
 
+    # 3) Telegram push — async via the worker queue so the HTTP response
+    # returns immediately. Soft-fail: the worker logs errors but never affects
+    # the saved comment. Skipped silently if Telegram isn't configured.
+    try:
+        if notifier.is_configured():
+            frappe.enqueue(
+                "feedback_widget.api.feedback._push_telegram_for_doc",
+                queue="short",
+                doc_name=doc.name,
+                enqueue_after_commit=True,  # don't push for a row that hasn't committed
+            )
+    except Exception as e:
+        frappe.log_error(message=str(e), title="feedback_widget telegram enqueue failed")
+
     return {
         "ok": True,
         "name": doc.name,
         "saved_as": os.path.basename(saved_path) if saved_path else "",
     }
+
+
+def _push_telegram_for_doc(doc_name: str) -> None:
+    """Worker job — fetch a Feedback Comment by name and push to Telegram with
+    rich-format caption + any attached images. Marks `telegram_pushed=1` on
+    success. Silent (logged) failure on any error.
+    """
+    try:
+        doc = frappe.get_doc("Feedback Comment", doc_name)
+    except Exception as e:
+        frappe.log_error(message=str(e), title=f"feedback_widget telegram: load {doc_name}")
+        return
+
+    # Reconstruct the entry shape default_telegram_summary expects from the
+    # stored DocType row + JSON columns
+    entry = {
+        "project": doc.project,
+        "screen_id": doc.screen_id,
+        "screen_name": doc.screen_name,
+        "message": doc.message,
+        "submitter": doc.submitter,
+        "ts": doc.ts.isoformat() if hasattr(doc.ts, "isoformat") else str(doc.ts),
+    }
+    if doc.tag_type or doc.tag_severity:
+        entry["tags"] = {
+            "type": doc.tag_type, "severity": doc.tag_severity,
+        }
+    try:
+        if doc.pointed_element:
+            entry["pointed_element"] = json.loads(doc.pointed_element)
+        if doc.context:
+            entry["context"] = json.loads(doc.context)
+    except Exception:
+        pass
+
+    site_url = ""
+    try:
+        # Build a clickable site URL — prefer the public hostname from request
+        # Host header if available; fall back to local site name.
+        site_url = f"https://{frappe.local.site}/app/feedback-comment/{doc_name}"
+    except Exception:
+        pass
+    summary_fn = default_telegram_summary(
+        project_name=doc.project or "",
+        base_url=site_url,
+    )
+    caption = summary_fn(entry)
+
+    # Resolve attachment paths from the JSON column. Frappe File records have
+    # file_url like "/private/files/xxx" (private) or "/files/xxx" (public);
+    # both map to the site's public/ or private/files/ on disk.
+    attachment_paths: list = []
+    try:
+        atts = json.loads(doc.attachments or "[]")
+        for a in atts:
+            url = a.get("file_url") or ""
+            if not url:
+                continue
+            # Resolve to absolute filesystem path
+            if url.startswith("/private/files/"):
+                p = frappe.get_site_path("private", "files", url.split("/private/files/", 1)[1])
+            elif url.startswith("/files/"):
+                p = frappe.get_site_path("public", "files", url.split("/files/", 1)[1])
+            else:
+                continue
+            attachment_paths.append(p)
+    except Exception as e:
+        frappe.log_error(message=str(e), title=f"feedback_widget telegram: parse attachments {doc_name}")
+
+    ok = notifier.push_feedback(caption, attachment_paths=attachment_paths)
+    try:
+        frappe.db.set_value("Feedback Comment", doc_name, "telegram_pushed", 1 if ok else 0,
+                            update_modified=False)
+        frappe.db.commit()
+    except Exception:
+        pass
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET"])

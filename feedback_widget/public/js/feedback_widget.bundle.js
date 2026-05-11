@@ -101,6 +101,11 @@ import "./feedback_widget_core.js";
       getScreenId: currentRoute,
       getScreenName: currentRouteName,
       getContext: getContext,
+      // v1.3 — image attachments go through Frappe's standard upload_file
+      // endpoint. is_private=1 keeps screenshots off the public web; folder
+      // omitted so Frappe uses its default 'Home/Attachments' (always exists).
+      uploadEndpoint: "/api/method/upload_file",
+      uploadExtraFields: { is_private: "1" },
       fetchHeaders: function () {
         const t = (window.frappe && window.frappe.csrf_token) || "";
         return t ? { "X-Frappe-CSRF-Token": t } : {};
