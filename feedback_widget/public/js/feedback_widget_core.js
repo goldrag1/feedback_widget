@@ -1415,14 +1415,39 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       st.className = 'fbw-status' + (kind === 'ok' ? ' fbw-ok' : kind === 'error' ? ' fbw-error' : '');
     }
 
+    _detectFormFactor() {
+      // Prefer User-Agent Client Hints (more reliable than width on tablets
+      // that fake desktop UA, and on dev tools "responsive" mode).
+      try {
+        if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+          if (navigator.userAgentData.mobile) return 'mobile';
+        }
+      } catch (_e) {}
+      // Fallback: viewport width thresholds aligned with our @media (max-width: 720px)
+      // mobile rules + Tailwind/Material/Bootstrap tablet bands.
+      const w = window.innerWidth || 0;
+      if (w < 768)  return 'mobile';
+      if (w < 1024) return 'tablet';
+      return 'desktop';
+    }
+
     _buildContextBundle() {
+      const w = window.innerWidth || 0;
+      const h = window.innerHeight || 0;
+      const isTouch = (typeof matchMedia === 'function')
+        ? matchMedia('(pointer: coarse)').matches : false;
       const ctx = {
         url: location.href,
         pathname: location.pathname,
         hash: location.hash,
         viewport: {
-          w: window.innerWidth, h: window.innerHeight,
+          w: w, h: h,
           dpr: window.devicePixelRatio || 1,
+          // v1.5 — explicit form-factor classification so triage doesn't have
+          // to derive from UA + width every time.
+          form_factor: this._detectFormFactor(),
+          orientation: w > h ? 'landscape' : 'portrait',
+          touch: isTouch,
         },
         language: navigator.language || '',
         recent_actions: this._recentActions.slice(),
