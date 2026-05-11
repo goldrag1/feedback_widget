@@ -1,5 +1,22 @@
 /**
- * feedback-widget.js — drop-in chat-style per-page feedback collector.
+ * feedback-widget.js v1.2 — drop-in chat-style per-page feedback collector.
+ *
+ * v1.2 changes (mobile-first):
+ *   - Touch-aware element picker: drag highlights, tap selects, scroll allowed,
+ *     two-finger tap cancels.
+ *   - 44×44 touch targets via @media (pointer: coarse).
+ *   - 16px font on textarea + name input on small viewports (suppresses iOS
+ *     auto-zoom on focus).
+ *   - env(safe-area-inset-bottom) padding so the sheet clears the iOS home
+ *     indicator.
+ *   - Mobile-flavoured picker banner copy ("Chạm vào chỗ muốn nói").
+ *
+ * v1.1 changes (richer context for AI agents):
+ *   - Tag chips (type + severity).
+ *   - Element pointer capture (CSS selector + bbox + html preview).
+ *   - Auto context bundle (URL, viewport, last 20 actions, console errors,
+ *     app meta via cfg.getContext).
+ *   - cfg.fetchHeaders for CSRF tokens / custom auth.
  *
  * Single-file vanilla JS. No dependencies. Embeds CSS via injected <style>.
  * Mounts a floating "💬" button + slide-up bottom sheet on every page.
@@ -109,6 +126,7 @@
       pick_btn: '📍 Chỉ vào chỗ đang nói',
       pick_btn_short: '📍',
       pick_active: 'Bấm vào chỗ anh/chị muốn nói. ESC để hủy.',
+      pick_active_touch: 'Chạm vào chỗ muốn nói (cuộn nếu cần) · chạm hai ngón để hủy',
       pick_clear_aria: 'Bỏ chọn',
     },
     en: {
@@ -131,6 +149,7 @@
       pick_btn: '📍 Point at element',
       pick_btn_short: '📍',
       pick_active: 'Click the element you mean. ESC to cancel.',
+      pick_active_touch: 'Tap the element you mean (scroll if needed) · 2-finger tap to cancel',
       pick_clear_aria: 'Clear pick',
     },
   };
@@ -394,6 +413,38 @@
   transition: all 60ms linear;
 }
 body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
+
+/* ---- v1.2: mobile-first touch ergonomics ---- */
+/* iOS Safari auto-zooms inputs whose font-size <16px on focus. Bump to 16px
+   on mobile-width viewports so the whole page doesn't jump-scale when the
+   user taps the textarea or submitter name field. */
+@media (max-width: 720px) {
+  .fbw-input-row textarea, .fbw-name { font-size: 16px; }
+}
+
+/* iOS home indicator + notch — pad the sheet bottom so the input area
+   is not occluded by the indicator strip. dvh on max-height (already set)
+   handles the keyboard-pop case. */
+.fbw-sheet { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+/* Touch devices need 44×44 minimum touch targets per Apple HIG and ~48dp
+   per Material guidelines. Bump all interactive controls — except chips
+   and inline icons — when the primary pointer is coarse (finger). */
+@media (pointer: coarse) {
+  .fbw-fab           { width: 56px; height: 56px; border-radius: 28px; font-size: 26px; }
+  .fbw-pick-btn,
+  .fbw-send          { width: 44px; height: 44px; border-radius: 22px; font-size: 18px; }
+  .fbw-close-btn     { width: 36px; height: 36px; border-radius: 18px; font-size: 22px; }
+  .fbw-picked-clear  { width: 28px; height: 28px; border-radius: 14px; font-size: 18px; }
+  .fbw-chip          { padding: 6px 12px; font-size: 13px; }
+  /* Picker highlight is thicker on touch so it's visible past the user's
+     finger. Use a contrasting outer glow as well. */
+  .fbw-picker-highlight {
+    border-width: 3px;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 12px rgba(245,158,11,0.55);
+  }
+  .fbw-picker-banner { font-size: 14px; padding: 10px 16px; max-width: 90vw; }
+}
 `;
 
   // ---------- Helpers ----------
@@ -827,7 +878,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       }
     }
 
-    // ---------- v1.1: pointer mode ----------
+    // ---------- v1.1: pointer mode (with v1.2 touch support) ----------
     _startPointerMode() {
       if (this._pickerActive) return;
       this._pickerActive = true;
@@ -835,9 +886,12 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this.toggle(false);
       document.body.classList.add('fbw-picking');
 
+      // v1.2 — pick mobile-friendly banner copy when primary pointer is coarse
+      const isTouch = (typeof matchMedia === 'function')
+        && matchMedia('(pointer: coarse)').matches;
       const banner = document.createElement('div');
       banner.className = 'fbw-picker-banner';
-      banner.textContent = this.copy.pick_active;
+      banner.textContent = isTouch ? this.copy.pick_active_touch : this.copy.pick_active;
       document.body.appendChild(banner);
 
       const highlight = document.createElement('div');
@@ -848,29 +902,75 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         if (!el || !el.closest) return false;
         return !!el.closest('.fbw-fab, .fbw-sheet, .fbw-backdrop, .fbw-picker-banner, .fbw-picker-highlight');
       };
-      const pickFrom = (e) => {
-        const el = document.elementFromPoint(e.clientX, e.clientY);
+      const elFromPoint = (x, y) => {
+        const el = document.elementFromPoint(x, y);
         return el && !isOurs(el) ? el : null;
       };
-
-      const onMove = (e) => {
-        const t = pickFrom(e);
-        if (!t) { highlight.style.display = 'none'; return; }
-        const r = t.getBoundingClientRect();
+      const showHighlight = (el) => {
+        if (!el) { highlight.style.display = 'none'; return; }
+        const r = el.getBoundingClientRect();
         highlight.style.display = 'block';
         highlight.style.left = r.left + 'px';
         highlight.style.top = r.top + 'px';
         highlight.style.width = r.width + 'px';
         highlight.style.height = r.height + 'px';
       };
+
+      // ----- mouse path (desktop) -----
+      const onMove = (e) => showHighlight(elFromPoint(e.clientX, e.clientY));
       const onClick = (e) => {
-        const t = pickFrom(e);
+        const t = elFromPoint(e.clientX, e.clientY);
         if (!t) return;
         e.preventDefault(); e.stopPropagation();
         this.pickedElement = this._captureElement(t);
         cleanup(true);
       };
       const onKey = (e) => { if (e.key === 'Escape') cleanup(false); };
+
+      // ----- v1.2 touch path (mobile) -----
+      // Single-finger: drag = scroll page + highlight follows finger; lift
+      //   without significant movement = pick element under last touch.
+      // Two-finger tap: cancel picker mode.
+      let touchStartX = 0, touchStartY = 0, touchMoved = false;
+      const TOUCH_TAP_THRESHOLD = 10; // px — above this counts as a scroll, not a tap
+      const onTouchStart = (e) => {
+        if (e.touches.length >= 2) {           // 2-finger tap → cancel
+          cleanup(false);
+          return;
+        }
+        const t = e.touches[0];
+        touchStartX = t.clientX; touchStartY = t.clientY;
+        touchMoved = false;
+        showHighlight(elFromPoint(t.clientX, t.clientY));
+      };
+      const onTouchMove = (e) => {
+        if (e.touches.length !== 1) return;
+        const t = e.touches[0];
+        if (Math.abs(t.clientX - touchStartX) > TOUCH_TAP_THRESHOLD
+            || Math.abs(t.clientY - touchStartY) > TOUCH_TAP_THRESHOLD) {
+          touchMoved = true;
+        }
+        showHighlight(elFromPoint(t.clientX, t.clientY));
+        // Do NOT preventDefault — we want the page to scroll naturally
+      };
+      const onTouchEnd = (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const t = e.changedTouches[0];
+        if (touchMoved) {
+          // Was a scroll, not a tap — leave highlight where finger lifted
+          // so the user sees what's now under it but don't capture
+          showHighlight(elFromPoint(t.clientX, t.clientY));
+          return;
+        }
+        const target = elFromPoint(t.clientX, t.clientY);
+        if (!target) return;
+        e.preventDefault();
+        // Block the synthesised click that follows a tap (would re-trigger onClick)
+        const blockClick = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+        document.addEventListener('click', blockClick, { capture: true, once: true });
+        this.pickedElement = this._captureElement(target);
+        cleanup(true);
+      };
 
       const cleanup = (success) => {
         if (!this._pickerActive) return;
@@ -879,6 +979,9 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         document.removeEventListener('mousemove', onMove, true);
         document.removeEventListener('click', onClick, true);
         document.removeEventListener('keydown', onKey, true);
+        document.removeEventListener('touchstart', onTouchStart, true);
+        document.removeEventListener('touchmove', onTouchMove, true);
+        document.removeEventListener('touchend', onTouchEnd, true);
         try { highlight.remove(); } catch(_e) {}
         try { banner.remove(); } catch(_e) {}
         this.toggle(true);
@@ -889,6 +992,12 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       document.addEventListener('mousemove', onMove, true);
       document.addEventListener('click', onClick, true);
       document.addEventListener('keydown', onKey, true);
+      // Touch listeners. touchmove must NOT be passive if we ever want to
+      // preventDefault; we don't here, so passive is fine and keeps scroll
+      // smoothness on iOS.
+      document.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
+      document.addEventListener('touchmove',  onTouchMove,  { capture: true, passive: true });
+      document.addEventListener('touchend',   onTouchEnd,   { capture: true, passive: false });
     }
 
     _captureElement(el) {
