@@ -180,10 +180,11 @@
 .fbw-fab {
   position: fixed;
   width: 48px; height: 48px; border-radius: 24px;
-  border: 0; cursor: pointer;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  cursor: pointer;
   font-size: 22px; line-height: 1;
   color: white;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
   display: flex; align-items: center; justify-content: center;
   z-index: 2147483600;
   transition: transform 0.12s ease;
@@ -213,12 +214,13 @@
   position: fixed;
   left: 0; right: 0; bottom: 0;
   background: white;
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 18px 18px 0 0;
   max-height: 75vh; max-height: 75dvh;
   display: none;
   flex-direction: column;
   z-index: 2147483602;
-  box-shadow: 0 -10px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 -6px 18px rgba(15, 23, 42, 0.06);
   font: 14.5px -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Roboto", sans-serif;
   color: #1a1a1a;
   -webkit-font-smoothing: antialiased;

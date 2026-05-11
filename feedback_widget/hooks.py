@@ -1,6 +1,6 @@
 app_name = "feedback_widget"
 app_title = "Feedback Widget"
-app_publisher = "DCNet"
+app_publisher = "DCNET"
 app_description = (
     "Drop-in floating feedback widget with element pointer + tag chips + context bundle. "
     "Stores comments as Feedback Comment DocType and mirrors raw payload to "
