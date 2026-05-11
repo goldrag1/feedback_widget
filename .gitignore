@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+
+# Editable installs
+*.dist-info/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Frappe build artifacts (built per-bench, not tracked)
+node_modules/
+.frappe/
+*.log
+
+# Local dev artifacts
+.claude-feedback/

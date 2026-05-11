@@ -1,0 +1,11 @@
+[project]
+name = "feedback_widget"
+version = "1.1.0"
+description = "Drop-in floating feedback widget with element pointer + tag chips + context bundle. Stores comments as Frappe DocType + appends to AI-agent-friendly JSONL mirror."
+authors = [{ name = "DCNet" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
