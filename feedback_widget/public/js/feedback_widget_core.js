@@ -76,6 +76,10 @@
     getScreenName: null,            // () => string  (already in v1.0)
     getContext: null,               // () => object  — merged into ctx.app
     fetchHeaders: null,             // () => object  — extra headers per POST (e.g. CSRF)
+    userId: '',                     // host-supplied identifier — scopes FAB position per user
+    maxPickedElements: 5,           // v1.4 — cap how many element pins per comment
+    statusEndpoint: '',             // v1.4 — GET/POST endpoint for status_for_names; '' = disabled
+    statusPollMs: 60000,            // v1.4 — poll cadence while sheet is open
   };
 
   // Tag groups — fixed list. Host should not extend (keeps server queries simple).
@@ -142,6 +146,16 @@
       attach_too_many: 'Đã tới giới hạn 10 ảnh',
       attach_uploading: 'Đang tải ảnh lên...',
       attach_upload_failed: 'Tải ảnh lên thất bại',
+      pick_more: 'Chỉ thêm chỗ',
+      pick_count_one: 'đã chọn 1 chỗ',
+      pick_count_many: 'đã chọn {n} chỗ',
+      pick_max_reached: 'Đã đạt giới hạn {n} chỗ',
+      status_new: 'Mới gửi',
+      status_triaged: '👀 Đã xem',
+      status_in_progress: '🔧 Đang xử lý',
+      status_resolved: '✅ Đã xử lý',
+      status_wontfix: '🚫 Không xử lý',
+      status_note_label: 'Lời nhắn',
     },
     en: {
       fab_title: 'Leave feedback on this screen',
@@ -172,6 +186,16 @@
       attach_too_many: 'Hit 10-image limit',
       attach_uploading: 'Uploading images...',
       attach_upload_failed: 'Upload failed',
+      pick_more: 'Pin another',
+      pick_count_one: '1 pinned',
+      pick_count_many: '{n} pinned',
+      pick_max_reached: 'Max {n} pins reached',
+      status_new: 'Submitted',
+      status_triaged: '👀 Triaged',
+      status_in_progress: '🔧 In progress',
+      status_resolved: '✅ Resolved',
+      status_wontfix: '🚫 Won\'t fix',
+      status_note_label: 'Reply',
     },
   };
 
@@ -181,15 +205,19 @@
   position: fixed;
   width: 48px; height: 48px; border-radius: 24px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  cursor: pointer;
+  cursor: grab;
   font-size: 22px; line-height: 1;
   color: white;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
   display: flex; align-items: center; justify-content: center;
   z-index: 2147483600;
   transition: transform 0.12s ease;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .fbw-fab:active { transform: scale(0.94); }
+.fbw-fab.fbw-dragging { cursor: grabbing; transition: none; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18); }
 .fbw-fab[data-pos="bottom-right"] { right: 14px; bottom: 14px; }
 .fbw-fab[data-pos="bottom-left"]  { left: 14px;  bottom: 14px; }
 .fbw-fab .fbw-dot {
@@ -394,7 +422,6 @@
   border: 1px solid #fde68a;
   border-radius: 8px;
   padding: 5px 8px;
-  margin-bottom: 8px;
   font-size: 12px;
   color: #78350f;
   overflow: hidden;
@@ -533,6 +560,66 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
   pointer-events: none;
 }
 @keyframes fbw-pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+/* ---- v1.4: multi-pin chip row (above textarea) ---- */
+.fbw-picked-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.fbw-picked-list:empty { display: none; }
+
+/* ---- v1.4: history bubble extras — attachments, pins, status ---- */
+.fbw-msg-attached {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin-top: 4px;
+  max-width: 85%;
+  justify-content: flex-end;
+}
+.fbw-msg-thumb {
+  width: 44px; height: 44px; border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  background: #f3f4f6;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: block;
+}
+.fbw-msg-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fbw-msg-pins {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin-top: 4px;
+  max-width: 85%;
+  justify-content: flex-end;
+}
+.fbw-msg-pin {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+  color: #78350f;
+  max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fbw-msg-status {
+  align-self: flex-end;
+  margin-top: 4px;
+  padding: 4px 9px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  max-width: 85%;
+  border: 1px solid transparent;
+}
+.fbw-msg-status[data-status="Triaged"]     { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
+.fbw-msg-status[data-status="In Progress"] { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+.fbw-msg-status[data-status="Resolved"]    { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.fbw-msg-status[data-status="Wontfix"]     { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
+.fbw-msg-status-note {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: inherit;
+  opacity: 0.9;
+  white-space: pre-wrap; word-wrap: break-word;
+}
 `;
 
   // ---------- Helpers ----------
@@ -575,8 +662,8 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this.els = {};
       // v1.1 — selected chips (persists across comments in audit walks)
       this.tags = this._loadTags();
-      // v1.1 — picked element (cleared after each send)
-      this.pickedElement = null;
+      // v1.4 — picked elements (array, cleared after each send)
+      this.pickedElements = [];
       // v1.3 — attachments [{file, blobUrl, file_url?, file_name, file_size, mime, status}]
       // status: 'pending' | 'uploading' | 'uploaded' | 'failed'
       this.attachments = [];
@@ -656,6 +743,8 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       if (this.cfg.enableContext) this._initContextCapture();
       // Try to flush pending offline messages on mount
       setTimeout(() => this._resendPending(), 1500);
+      // v1.4 — pull status updates so prior comments show their current state
+      setTimeout(() => this._fetchStatuses(), 2000);
     }
 
     _mountFab() {
@@ -666,9 +755,92 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       fab.title = this.copy.fab_title;
       fab.style.background = this.cfg.fabColor;
       fab.innerHTML = `${this.cfg.fabIcon}<span class="fbw-dot"></span>`;
-      fab.addEventListener('click', () => this.toggle());
       document.body.appendChild(fab);
       this.els.fab = fab;
+      this._setupFabDrag(fab);
+      this._restoreFabPosition(fab);
+    }
+
+    _fabPositionKey() {
+      const u = this.cfg.userId ? `:${this.cfg.userId}` : '';
+      return `fbw-fab-pos:${this.cfg.project}${u}`;
+    }
+    _loadFabPosition() {
+      try { return JSON.parse(localStorage.getItem(this._fabPositionKey()) || 'null'); }
+      catch { return null; }
+    }
+    _saveFabPosition(x, y) {
+      try { localStorage.setItem(this._fabPositionKey(), JSON.stringify({ x, y })); } catch {}
+    }
+    _applyFabPosition(fab, x, y) {
+      const rect = fab.getBoundingClientRect();
+      const w = rect.width || 48;
+      const h = rect.height || 48;
+      const maxX = Math.max(4, window.innerWidth - w - 4);
+      const maxY = Math.max(4, window.innerHeight - h - 4);
+      x = Math.max(4, Math.min(x, maxX));
+      y = Math.max(4, Math.min(y, maxY));
+      fab.style.left = x + 'px';
+      fab.style.top = y + 'px';
+      fab.style.right = 'auto';
+      fab.style.bottom = 'auto';
+      return { x, y };
+    }
+    _restoreFabPosition(fab) {
+      const pos = this._loadFabPosition();
+      if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+        this._applyFabPosition(fab, pos.x, pos.y);
+      }
+    }
+    _setupFabDrag(fab) {
+      const THRESHOLD = 5;
+      let dragging = false, moved = false, suppressClick = false;
+      let startX = 0, startY = 0, offX = 0, offY = 0;
+
+      const onDown = (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        dragging = true; moved = false;
+        const rect = fab.getBoundingClientRect();
+        startX = e.clientX; startY = e.clientY;
+        offX = e.clientX - rect.left; offY = e.clientY - rect.top;
+        try { fab.setPointerCapture && fab.setPointerCapture(e.pointerId); } catch {}
+      };
+      const onMove = (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        if (!moved && (dx * dx + dy * dy) > THRESHOLD * THRESHOLD) {
+          moved = true;
+          fab.classList.add('fbw-dragging');
+        }
+        if (moved) this._applyFabPosition(fab, e.clientX - offX, e.clientY - offY);
+      };
+      const onUp = (e) => {
+        if (!dragging) return;
+        dragging = false;
+        fab.classList.remove('fbw-dragging');
+        if (moved) {
+          const rect = fab.getBoundingClientRect();
+          const clamped = this._applyFabPosition(fab, rect.left, rect.top);
+          this._saveFabPosition(clamped.x, clamped.y);
+          suppressClick = true;
+          setTimeout(() => { suppressClick = false; }, 0);
+        }
+        try { fab.releasePointerCapture && fab.releasePointerCapture(e.pointerId); } catch {}
+      };
+
+      fab.addEventListener('pointerdown', onDown);
+      fab.addEventListener('pointermove', onMove);
+      fab.addEventListener('pointerup', onUp);
+      fab.addEventListener('pointercancel', onUp);
+      fab.addEventListener('click', (e) => {
+        if (suppressClick) { e.stopPropagation(); e.preventDefault(); return; }
+        this.toggle();
+      });
+
+      window.addEventListener('resize', () => {
+        const pos = this._loadFabPosition();
+        if (pos) this._applyFabPosition(fab, pos.x, pos.y);
+      });
     }
 
     _mountSheet() {
@@ -715,11 +887,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         ${tagsHtml}
         <div class="fbw-input-area">
           <input type="text" class="fbw-name" id="fbw-name" placeholder="${escapeHtml(this.copy.name_placeholder)}">
-          <div class="fbw-picked" id="fbw-picked" style="display:none">
-            <span class="fbw-picked-icon">📍</span>
-            <code class="fbw-picked-sel" id="fbw-picked-sel"></code>
-            <button class="fbw-picked-clear" id="fbw-picked-clear" type="button" aria-label="${escapeHtml(this.copy.pick_clear_aria)}">×</button>
-          </div>
+          <div class="fbw-picked-list" id="fbw-picked-list"></div>
           <div class="fbw-attached" id="fbw-attached" style="display:none"></div>
           <div class="fbw-input-row">
             ${pickerBtn}
@@ -741,9 +909,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this.els.close = sheet.querySelector('#fbw-close');
       this.els.tags = sheet.querySelector('#fbw-tags');
       this.els.pick = sheet.querySelector('#fbw-pick');
-      this.els.picked = sheet.querySelector('#fbw-picked');
-      this.els.pickedSel = sheet.querySelector('#fbw-picked-sel');
-      this.els.pickedClear = sheet.querySelector('#fbw-picked-clear');
+      this.els.pickedList = sheet.querySelector('#fbw-picked-list');
       this.els.attach = sheet.querySelector('#fbw-attach');
       this.els.attachInput = sheet.querySelector('#fbw-attach-input');
       this.els.attached = sheet.querySelector('#fbw-attached');
@@ -796,14 +962,25 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         });
       }
 
-      // v1.1 — element picker
+      // v1.1 — element picker (v1.4: multi-pin)
       if (this.els.pick) {
-        this.els.pick.addEventListener('click', () => this._startPointerMode());
+        this.els.pick.addEventListener('click', () => {
+          if (this.pickedElements.length >= this.cfg.maxPickedElements) {
+            this._showStatus(this.copy.pick_max_reached.replace('{n}', this.cfg.maxPickedElements), 'error');
+            return;
+          }
+          this._startPointerMode();
+        });
       }
-      if (this.els.pickedClear) {
-        this.els.pickedClear.addEventListener('click', () => {
-          this.pickedElement = null;
-          this._renderPicked();
+      if (this.els.pickedList) {
+        this.els.pickedList.addEventListener('click', e => {
+          const btn = e.target.closest('.fbw-picked-clear');
+          if (!btn) return;
+          const idx = parseInt(btn.dataset.idx, 10);
+          if (!isNaN(idx) && idx >= 0 && idx < this.pickedElements.length) {
+            this.pickedElements.splice(idx, 1);
+            this._renderPicked();
+          }
         });
       }
 
@@ -842,6 +1019,71 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         this._renderChips();
         this._renderPicked();
         setTimeout(() => this.els.msg.focus(), 100);
+        this._fetchStatuses();
+        this._startStatusPoll();
+      } else {
+        this._stopStatusPoll();
+      }
+    }
+
+    // ---------- v1.4: status polling ----------
+    _startStatusPoll() {
+      if (!this.cfg.statusEndpoint) return;
+      this._stopStatusPoll();
+      const ms = Math.max(15000, this.cfg.statusPollMs | 0 || 60000);
+      this._statusTimer = setInterval(() => {
+        if (!this.open) { this._stopStatusPoll(); return; }
+        this._fetchStatuses();
+      }, ms);
+    }
+    _stopStatusPoll() {
+      if (this._statusTimer) { clearInterval(this._statusTimer); this._statusTimer = null; }
+    }
+    async _fetchStatuses() {
+      if (!this.cfg.statusEndpoint) return;
+      const data = this._load();
+      const msgs = data.messages || [];
+      const names = msgs.map(m => m.server_name).filter(Boolean);
+      if (names.length === 0) return;
+      const headers = { 'Content-Type': 'application/json' };
+      if (typeof this.cfg.fetchHeaders === 'function') {
+        try {
+          const extra = this.cfg.fetchHeaders() || {};
+          for (const k in extra) if (extra[k] != null) headers[k] = String(extra[k]);
+        } catch (_e) {}
+      }
+      let res;
+      try {
+        res = await fetch(this.cfg.statusEndpoint, {
+          method: 'POST',
+          headers,
+          credentials: 'same-origin',
+          body: JSON.stringify({ names, project: this.cfg.project }),
+        });
+        if (!res.ok) return;
+      } catch (_e) { return; }
+      let body;
+      try { body = await res.json(); } catch (_e) { return; }
+      const items = (body && (body.message && body.message.items)) || (body && body.items) || [];
+      if (!Array.isArray(items) || items.length === 0) return;
+      const byName = {};
+      for (const it of items) if (it && it.name) byName[it.name] = it;
+      let changed = false;
+      for (const m of msgs) {
+        const it = byName[m.server_name];
+        if (!it) continue;
+        if (m.server_status !== it.status
+            || m.server_status_note !== (it.status_note || '')
+            || m.server_status_changed_at !== (it.status_changed_at || '')) {
+          m.server_status = it.status;
+          m.server_status_note = it.status_note || '';
+          m.server_status_changed_at = it.status_changed_at || '';
+          changed = true;
+        }
+      }
+      if (changed) {
+        this._save(data);
+        if (this.open) this._renderHistory();
       }
     }
 
@@ -866,11 +1108,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
             ${other}
           </div>`;
       } else {
-        this.els.history.innerHTML = here.map(m => `
-          <div class="fbw-msg-row">
-            <div class="fbw-msg">${escapeHtml(m.message)}</div>
-            <div class="fbw-msg-meta">${escapeHtml(m.submitter || this.copy.anon)} · ${escapeHtml(fmtTime(m.ts))}${m.sent === false ? ' · ⏳ ' + escapeHtml(this.copy.not_sent) : ''}</div>
-          </div>`).join('');
+        this.els.history.innerHTML = here.map(m => this._renderMsgRow(m)).join('');
       }
 
       // submitter input visibility
@@ -886,6 +1124,68 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       setTimeout(() => { this.els.history.scrollTop = this.els.history.scrollHeight; }, 30);
       this.els.status.textContent = '';
       this.els.status.className = 'fbw-status';
+    }
+
+    _renderMsgRow(m) {
+      const meta = `${escapeHtml(m.submitter || this.copy.anon)} · ${escapeHtml(fmtTime(m.ts))}${m.sent === false ? ' · ⏳ ' + escapeHtml(this.copy.not_sent) : ''}`;
+      // Attachments — clickable thumbs that open the file in a new tab
+      let attHtml = '';
+      const atts = Array.isArray(m.attachments) ? m.attachments : [];
+      if (atts.length) {
+        attHtml = `<div class="fbw-msg-attached">${atts.map(a => {
+          const url = (a && a.file_url) || '';
+          const name = (a && a.file_name) || '';
+          if (!url) return '';
+          return `<a class="fbw-msg-thumb" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="${escapeHtml(name)}"><img src="${escapeHtml(url)}" alt="${escapeHtml(name)}"></a>`;
+        }).join('')}</div>`;
+      }
+      // Pins — show selector + element text (if any)
+      let pins = [];
+      if (Array.isArray(m.pointed_elements) && m.pointed_elements.length) {
+        pins = m.pointed_elements;
+      } else if (m.pointed_element && typeof m.pointed_element === 'object') {
+        pins = [m.pointed_element];
+      }
+      let pinHtml = '';
+      if (pins.length) {
+        pinHtml = `<div class="fbw-msg-pins">${pins.map(p => {
+          const sel = (p && p.selector) || '';
+          const txt = ((p && p.text) || '').trim();
+          const short = txt ? `${txt.slice(0, 40)}${txt.length > 40 ? '…' : ''}` : sel;
+          return `<span class="fbw-msg-pin" title="${escapeHtml(sel)}">📍 ${escapeHtml(short)}</span>`;
+        }).join('')}</div>`;
+      }
+      // Status — only show once team has moved it past 'New'
+      const statusHtml = this._renderStatusBadge(m);
+      return `
+        <div class="fbw-msg-row">
+          <div class="fbw-msg">${escapeHtml(m.message)}</div>
+          ${attHtml}
+          ${pinHtml}
+          <div class="fbw-msg-meta">${meta}</div>
+          ${statusHtml}
+        </div>`;
+    }
+
+    _statusLabel(s) {
+      switch (s) {
+        case 'Triaged':     return this.copy.status_triaged;
+        case 'In Progress': return this.copy.status_in_progress;
+        case 'Resolved':    return this.copy.status_resolved;
+        case 'Wontfix':     return this.copy.status_wontfix;
+        default:            return '';
+      }
+    }
+
+    _renderStatusBadge(m) {
+      const s = m && m.server_status;
+      if (!s || s === 'New') return '';
+      const label = this._statusLabel(s);
+      if (!label) return '';
+      const note = (m.server_status_note || '').trim();
+      return `<div class="fbw-msg-status" data-status="${escapeHtml(s)}">
+        ${escapeHtml(label)}${note ? `<span class="fbw-msg-status-note">${escapeHtml(this.copy.status_note_label)}: ${escapeHtml(note)}</span>` : ''}
+      </div>`;
     }
 
     async send() {
@@ -916,7 +1216,12 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       };
       // v1.1 — attach optional fields if present
       if (Object.keys(this.tags).length) entry.tags = Object.assign({}, this.tags);
-      if (this.pickedElement) entry.pointed_element = this.pickedElement;
+      // v1.4 — array of pinned elements; mirror first one into pointed_element
+      // for older servers / data consumers that still expect single-object shape.
+      if (this.pickedElements && this.pickedElements.length) {
+        entry.pointed_elements = this.pickedElements.slice();
+        entry.pointed_element = this.pickedElements[0];
+      }
       if (this.cfg.enableContext) entry.context = this._buildContextBundle();
       // v1.3 — only include successfully-uploaded attachments in the payload
       const uploaded = this.attachments.filter(a => a.status === 'uploaded' && a.file_url);
@@ -938,7 +1243,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this.els.msg.value = '';
       this.els.msg.style.height = 'auto';
       this.els.send.disabled = true;
-      this.pickedElement = null;
+      this.pickedElements = [];
       // Revoke object URLs for uploaded attachments + drop the array
       for (const a of this.attachments) {
         if (a.blobUrl) { try { URL.revokeObjectURL(a.blobUrl); } catch (_e) {} }
@@ -959,11 +1264,17 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         const res = await this._post(payload);
         if (!res.ok) throw new Error('http ' + res.status);
         entry.sent = true;
+        try {
+          const j = await res.clone().json();
+          const m = (j && j.message) || j;
+          if (m && m.name) entry.server_name = String(m.name);
+        } catch (_e) {}
         this._save(data);
         st.className = 'fbw-status fbw-ok';
         st.textContent = this.copy.sent_ok;
         setTimeout(() => { if (st.textContent.startsWith('✓')) st.textContent = ''; }, 2500);
         this._renderHistory();
+        this._fetchStatuses();  // immediate first pull so user sees the row
       } catch (e) {
         st.className = 'fbw-status fbw-error';
         st.textContent = this.copy.net_error;
@@ -995,7 +1306,14 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         try {
           const { sent: _omit, ...payload } = e;
           const res = await this._post(payload);
-          if (res.ok) e.sent = true;
+          if (res.ok) {
+            e.sent = true;
+            try {
+              const j = await res.clone().json();
+              const m = (j && j.message) || j;
+              if (m && m.name) e.server_name = String(m.name);
+            } catch (_e) {}
+          }
         } catch (_e) { /* keep pending */ }
       }
       this._save(data);
@@ -1015,17 +1333,25 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       });
     }
 
-    // ---------- v1.1: picked element ----------
+    // ---------- v1.4: picked elements (multi-pin) ----------
     _renderPicked() {
-      if (!this.els.picked) return;
-      if (this.pickedElement && this.pickedElement.selector) {
-        const sel = this.pickedElement.selector;
-        const txt = (this.pickedElement.text || '').trim();
-        this.els.pickedSel.textContent = txt ? `${sel} · "${txt.slice(0, 40)}${txt.length > 40 ? '…' : ''}"` : sel;
-        this.els.picked.style.display = 'flex';
-      } else {
-        this.els.picked.style.display = 'none';
+      if (!this.els.pickedList) return;
+      const arr = this.pickedElements || [];
+      if (arr.length === 0) {
+        this.els.pickedList.innerHTML = '';
+        return;
       }
+      this.els.pickedList.innerHTML = arr.map((p, i) => {
+        const sel = p.selector || '';
+        const txt = (p.text || '').trim();
+        const label = txt ? `${sel} · "${txt.slice(0, 40)}${txt.length > 40 ? '…' : ''}"` : sel;
+        return `
+          <div class="fbw-picked" title="${escapeHtml(sel)}">
+            <span class="fbw-picked-icon">📍</span>
+            <code class="fbw-picked-sel">${escapeHtml(label)}</code>
+            <button class="fbw-picked-clear" type="button" data-idx="${i}" aria-label="${escapeHtml(this.copy.pick_clear_aria)}">×</button>
+          </div>`;
+      }).join('');
     }
 
     // ---------- v1.1: pointer mode (with v1.2 touch support) ----------
@@ -1072,7 +1398,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         const t = elFromPoint(e.clientX, e.clientY);
         if (!t) return;
         e.preventDefault(); e.stopPropagation();
-        this.pickedElement = this._captureElement(t);
+        this.pickedElements.push(this._captureElement(t));
         cleanup(true);
       };
       const onKey = (e) => { if (e.key === 'Escape') cleanup(false); };
@@ -1118,7 +1444,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         // Block the synthesised click that follows a tap (would re-trigger onClick)
         const blockClick = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
         document.addEventListener('click', blockClick, { capture: true, once: true });
-        this.pickedElement = this._captureElement(target);
+        this.pickedElements.push(this._captureElement(target));
         cleanup(true);
       };
 

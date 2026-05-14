@@ -92,9 +92,13 @@ import "./feedback_widget_core.js";
     // so multiple demos at different bench ports stay separate in localStorage.
     const project = ("dcnet-" + siteSlug()).replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
 
+    const userId = (window.frappe.session && window.frappe.session.user) || "";
+
     window.FeedbackWidget.mount({
       endpoint: "/api/method/feedback_widget.api.feedback.collect",
+      statusEndpoint: "/api/method/feedback_widget.api.feedback.status_for_names",
       project: project,
+      userId: userId,
       language: "vi",
       primaryColor: "#1f3a5f",
       fabColor: "#047857",
