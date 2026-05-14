@@ -75,7 +75,18 @@ def collect(**kwargs):
         return {"ok": False, "error": str(e)}
 
     # 1) Insert DocType row — flatten the rich blobs into Code (JSON) cells
-    pe = entry.get("pointed_element") or {}
+    # ─── Pointed elements — widget may send either:
+    #   - `pointed_elements`: array of element objects (v1.4+ multi-pin)
+    #   - `pointed_element`: single object (v1.3 and earlier)
+    # Normalise to a list for storage; keep first one in the Data summary cols
+    # so list views remain useful.
+    pe_list_raw = entry.get("pointed_elements")
+    if isinstance(pe_list_raw, list):
+        pe_list = [p for p in pe_list_raw if isinstance(p, dict)]
+    else:
+        single = entry.get("pointed_element")
+        pe_list = [single] if isinstance(single, dict) and single else []
+    pe = pe_list[0] if pe_list else {}
     ctx = entry.get("context") or {}
     tags = entry.get("tags") or {}
 
@@ -150,7 +161,7 @@ def collect(**kwargs):
         "tag_severity": tags.get("severity") or None,
         "pointed_selector": (pe.get("selector") or "")[:600] or None,
         "pointed_text": (pe.get("text") or "")[:200] or None,
-        "pointed_element": json.dumps(pe, ensure_ascii=False) if pe else None,
+        "pointed_element": json.dumps(pe_list if len(pe_list) > 1 else pe, ensure_ascii=False) if pe_list else None,
         "url": (ctx.get("url") or "")[:500] or None,
         "user_agent": entry.get("user_agent") or None,
         "context": json.dumps(ctx, ensure_ascii=False) if ctx else None,
@@ -269,6 +280,58 @@ def _push_telegram_for_doc(doc_name: str) -> None:
         frappe.db.commit()
     except Exception:
         pass
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def status_for_names(names=None, project: str = None):
+    """Return status info for the given Feedback Comment names, scoped to
+    those submitted by the current user.
+
+    Used by the widget to fetch fresh status + status_note updates so users
+    can see when their feedback has been Triaged / Resolved / etc. The widget
+    sends the local names it has cached; we return only the ones the caller
+    actually owns so a malicious client can't probe for other users' rows.
+    """
+    user = frappe.session.user
+    if not user or user == "Guest":
+        return {"items": []}
+
+    # Parse names: JSON array string, comma-separated string, or list
+    if isinstance(names, str):
+        s = names.strip()
+        if s.startswith("["):
+            try:
+                names = json.loads(s)
+            except Exception:
+                names = [n.strip() for n in s.split(",") if n.strip()]
+        else:
+            names = [n.strip() for n in s.split(",") if n.strip()]
+    if not isinstance(names, list):
+        names = []
+    names = [str(n) for n in names if n][:200]
+    if not names:
+        return {"items": []}
+
+    filters = {"name": ["in", names], "submitter_user": user}
+    if project:
+        filters["project"] = project
+
+    rows = frappe.db.get_all(
+        "Feedback Comment",
+        filters=filters,
+        fields=["name", "status", "status_note", "status_changed_at", "ts"],
+        limit_page_length=len(names),
+    )
+    items = []
+    for r in rows:
+        sca = r.get("status_changed_at")
+        items.append({
+            "name": r["name"],
+            "status": r.get("status") or "New",
+            "status_note": r.get("status_note") or "",
+            "status_changed_at": sca.isoformat() if hasattr(sca, "isoformat") else (sca or None),
+        })
+    return {"items": items}
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET"])
