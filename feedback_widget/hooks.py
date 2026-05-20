@@ -7,7 +7,7 @@ app_description = (
     "sites/<site>/private/feedback/<project>.jsonl for AI coding agents."
 )
 app_email = "dev@dcnet.local"
-app_license = "ISC"
+app_license = "AGPL-3"
 app_version = "1.1.0"
 
 # Bundle that auto-mounts the widget on every desk page with Frappe-aware
