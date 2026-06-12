@@ -8,8 +8,9 @@ app_description = (
 )
 app_email = "dev@dcnet.local"
 app_license = "AGPL-3"
-app_version = "1.1.0"
+app_version = "1.6.0"
 
 # Bundle that auto-mounts the widget on every desk page with Frappe-aware
 # callbacks. Cache-bust via content hash from assets.json — no ?version= suffix.
 app_include_js = ["feedback_widget.bundle.js"]
+web_include_js = ["feedback_widget.bundle.js"]

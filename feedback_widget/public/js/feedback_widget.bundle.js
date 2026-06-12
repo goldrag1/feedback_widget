@@ -122,12 +122,69 @@ import "./feedback_widget_core.js";
     } catch (_e) {}
   }
 
-  // Poll for frappe.boot — desk init is async; bail after 30s of no boot
+  // ── Website-page mount (www/ pages, portal SPAs) ──────────────────────
+  // app_include_js only covers desk; web_include_js loads this bundle on
+  // website pages where frappe.router/frappe.boot never exist. Mount with a
+  // pathname-based screen id instead. Logged-in users only — the collect
+  // endpoint is allow_guest=False, so a Guest-mounted FAB would just 403.
+  function websiteUser() {
+    try {
+      const m = document.cookie.match(/(?:^|;\s*)user_id=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : "Guest";
+    } catch (_e) { return "Guest"; }
+  }
+
+  function initWebsite() {
+    if (window.__FBW_FRAPPE_MOUNTED__) return;
+    window.__FBW_FRAPPE_MOUNTED__ = true;
+
+    const project = ("dcnet-" + location.hostname).replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
+    const screenId = function () {
+      return (location.pathname + (location.hash || "")).slice(0, 200);
+    };
+    window.FeedbackWidget.mount({
+      endpoint: "/api/method/feedback_widget.api.feedback.collect",
+      project: project,
+      language: "vi",
+      primaryColor: "#1f3a5f",
+      fabColor: "#047857",
+      getScreenId: screenId,
+      getScreenName: function () { return document.title || screenId(); },
+      getContext: function () {
+        return { route: screenId(), user: websiteUser(), page_type: "website" };
+      },
+      uploadEndpoint: "/api/method/upload_file",
+      uploadExtraFields: { is_private: "1" },
+      fetchHeaders: function () {
+        const t = (window.frappe && window.frappe.csrf_token) || "";
+        return t ? { "X-Frappe-CSRF-Token": t } : {};
+      },
+    });
+
+    // Hash-routed www SPAs (staff-hub style) — retag screen on hash change
+    window.addEventListener("hashchange", function () {
+      if (window.FeedbackWidget && window.FeedbackWidget.refreshScreen) {
+        window.FeedbackWidget.refreshScreen();
+      }
+    });
+  }
+
+  function isDeskContext() {
+    // Desk pages always serve under /desk or /app; www pages never do.
+    return /^\/(desk|app)(\/|$)/.test(location.pathname);
+  }
+
+  // Poll for frappe.boot — desk init is async; bail after 30s of no boot.
+  // On website pages frappe.boot never arrives: mount website-mode instead
+  // once FeedbackWidget core is registered (logged-in users only).
   let tries = 0;
   const maxTries = 60;  // 60 × 500ms = 30s
   const tick = setInterval(function () {
     tries++;
     if (ready()) { clearInterval(tick); init(); return; }
+    if (!isDeskContext() && typeof window.FeedbackWidget !== "undefined" && websiteUser() !== "Guest") {
+      clearInterval(tick); initWebsite(); return;
+    }
     if (tries >= maxTries) clearInterval(tick);
   }, 500);
 })();
