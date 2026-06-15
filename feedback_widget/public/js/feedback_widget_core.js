@@ -181,14 +181,16 @@
   position: fixed;
   width: 48px; height: 48px; border-radius: 24px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  cursor: pointer;
+  cursor: grab;
   font-size: 22px; line-height: 1;
   color: white;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
   display: flex; align-items: center; justify-content: center;
   z-index: 2147483600;
   transition: transform 0.12s ease;
+  touch-action: none;
 }
+.fbw-fab.fbw-dragging { cursor: grabbing; transition: none; }
 .fbw-fab:active { transform: scale(0.94); }
 .fbw-fab[data-pos="bottom-right"] { right: 14px; bottom: 14px; }
 .fbw-fab[data-pos="bottom-left"]  { left: 14px;  bottom: 14px; }
@@ -669,6 +671,74 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       fab.addEventListener('click', () => this.toggle());
       document.body.appendChild(fab);
       this.els.fab = fab;
+      this._makeFabDraggable(fab);
+    }
+
+    // Cho phép kéo FAB ra chỗ khác (desktop + mobile) khi nó che chức năng.
+    // Vị trí lưu localStorage; tap (di chuyển < ngưỡng) vẫn mở góp ý như cũ.
+    _makeFabDraggable(fab) {
+      const LS_KEY = 'fbw_fab_pos';
+      const TH = 6; // px: dưới ngưỡng = tap, trên = kéo
+      const clampAndApply = (x, y) => {
+        const r = fab.getBoundingClientRect();
+        const maxX = window.innerWidth - r.width - 4;
+        const maxY = window.innerHeight - r.height - 4;
+        const cx = Math.max(4, Math.min(x, maxX));
+        const cy = Math.max(4, Math.min(y, maxY));
+        fab.style.left = cx + 'px';
+        fab.style.top = cy + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+      };
+      // Khôi phục vị trí đã lưu (sau layout để biết kích thước)
+      try {
+        const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+        if (saved && typeof saved.x === 'number') {
+          requestAnimationFrame(() => clampAndApply(saved.x, saved.y));
+        }
+      } catch (e) {}
+
+      let down = false, moved = false, sx = 0, sy = 0, ox = 0, oy = 0;
+      const onDown = (e) => {
+        if (e.button != null && e.button !== 0) return; // chỉ chuột trái / chạm
+        down = true; moved = false;
+        const r = fab.getBoundingClientRect();
+        sx = e.clientX; sy = e.clientY;
+        ox = e.clientX - r.left; oy = e.clientY - r.top;
+        try { fab.setPointerCapture(e.pointerId); } catch (e2) {}
+      };
+      const onMove = (e) => {
+        if (!down) return;
+        if (!moved && (Math.abs(e.clientX - sx) > TH || Math.abs(e.clientY - sy) > TH)) {
+          moved = true;
+          fab.classList.add('fbw-dragging');
+        }
+        if (moved) {
+          e.preventDefault();
+          clampAndApply(e.clientX - ox, e.clientY - oy);
+        }
+      };
+      const onUp = () => {
+        if (!down) return;
+        down = false;
+        fab.classList.remove('fbw-dragging');
+        if (moved) {
+          const r = fab.getBoundingClientRect();
+          try { localStorage.setItem(LS_KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (e2) {}
+          // Chặn click ngay sau khi kéo để không mở panel
+          const block = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+          fab.addEventListener('click', block, { capture: true, once: true });
+          setTimeout(() => fab.removeEventListener('click', block, true), 350);
+        }
+      };
+      fab.addEventListener('pointerdown', onDown);
+      window.addEventListener('pointermove', onMove, { passive: false });
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+      // Giữ trong khung nhìn khi xoay/đổi cỡ màn
+      window.addEventListener('resize', () => {
+        if (fab.style.left) clampAndApply(parseFloat(fab.style.left), parseFloat(fab.style.top));
+      });
     }
 
     _mountSheet() {
