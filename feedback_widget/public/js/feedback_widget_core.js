@@ -1133,7 +1133,8 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       const atts = Array.isArray(m.attachments) ? m.attachments : [];
       if (atts.length) {
         attHtml = `<div class="fbw-msg-attached">${atts.map(a => {
-          const url = (a && a.file_url) || '';
+          let url = (a && a.file_url) || '';
+          if (url === 'undefined' || url === 'null') url = '';  // dữ liệu hỏng → tránh <img src="undefined"> ⇒ GET /undefined 404
           const name = (a && a.file_name) || '';
           if (!url) return '';
           return `<a class="fbw-msg-thumb" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="${escapeHtml(name)}"><img src="${escapeHtml(url)}" alt="${escapeHtml(name)}"></a>`;
