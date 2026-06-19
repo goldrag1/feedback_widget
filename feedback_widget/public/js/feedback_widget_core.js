@@ -1042,6 +1042,9 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     }
 
     async _post(payload) {
+      // Trên trang login/guest, config (endpoint) có thể undefined → fetch(undefined)
+      // gọi "/undefined" (404). Bỏ qua khi chưa có endpoint hợp lệ.
+      if (!this.cfg.endpoint) return Promise.reject(new Error('feedback_widget: endpoint missing'));
       const headers = { 'Content-Type': 'application/json' };
       if (typeof this.cfg.fetchHeaders === 'function') {
         try {
@@ -1058,6 +1061,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     }
 
     async _resendPending() {
+      if (!this.cfg.endpoint) return;  // login/guest: chưa có endpoint → đừng resend ('/undefined' 404)
       const data = this._load();
       const pending = (data.messages || []).filter(m => m.sent === false);
       if (pending.length === 0) return;
