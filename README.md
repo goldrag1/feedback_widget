@@ -27,34 +27,34 @@ The JSONL is **append-only**. If a triager later edits the DocType (status, para
 The JSONL inbox lives at:
 
 ```
-~/long/frappe-bench-dcnet/sites/<site>/private/feedback/<project>.jsonl
+~/long/frappe-bench-<bench>/sites/<site>/private/feedback/<project>.jsonl
 ```
 
-Default `<project>` slug for this app on dcnet = `dcnet-dcnet.localhost` (sitename-derived).
+Default `<project>` slug = `<bench>-<site>` (sitename-derived).
 
 ### Common queries
 
 ```bash
 # Show last 5 comments
-tail -5 sites/dcnet.localhost/private/feedback/dcnet-dcnet.localhost.jsonl | jq
+tail -5 sites/<site>/private/feedback/<bench>-<site>.jsonl | jq
 
 # All blocker bugs from accountants
 jq -c 'select(.tags.severity=="blocker" and (.context.app.roles // [] | any(. == "Accounts User")))' \
-   sites/dcnet.localhost/private/feedback/*.jsonl
+   sites/<site>/private/feedback/*.jsonl
 
 # Group comments by screen, count
-jq -r '.screen_name' sites/dcnet.localhost/private/feedback/*.jsonl | sort | uniq -c | sort -rn
+jq -r '.screen_name' sites/<site>/private/feedback/*.jsonl | sort | uniq -c | sort -rn
 
 # Export to markdown audit report (uses shared skill exporter)
 python3 ~/.claude/skills/feedback-widget/feedback_export.py \
-   sites/dcnet.localhost/private/feedback/dcnet-dcnet.localhost.jsonl --by screen
+   sites/<site>/private/feedback/<bench>-<site>.jsonl --by screen
 ```
 
 ### Comment shape
 
 ```jsonc
 {
-  "project": "dcnet-dcnet.localhost",
+  "project": "<bench>-<site>",
   "screen_id": "Form/Sales Invoice/SI-001",
   "screen_name": "Sales Invoice · SI-001",
   "message": "Nút Submit không hoạt động khi điền VAT 0%",
@@ -72,7 +72,7 @@ python3 ~/.claude/skills/feedback-widget/feedback_export.py \
     "viewport": { "w": 1440, "h": 900 }
   },
   "context": {
-    "url": "http://dcnet.localhost:8001/app/sales-invoice/SI-001",
+    "url": "http://<site>:<port>/app/sales-invoice/SI-001",
     "viewport": { "w": 1440, "h": 900, "dpr": 2 },
     "recent_actions": [
       { "type": "click", "target": "input.fbw-name", "ts": 1730000000000 },
@@ -86,21 +86,21 @@ python3 ~/.claude/skills/feedback-widget/feedback_export.py \
       "doctype": "Sales Invoice",
       "docname": "SI-001",
       "docstatus": 0,
-      "user": "long@dcnet.vn",
+      "user": "long@nextstar.vn",
       "user_full_name": "Nguyễn Hoàng Long",
       "roles": ["Accounts User", "Sales User", "All"],
       "versions": { "frappe": "16.17.0", "erpnext": "16.17.2" }
     }
   },
   "_doc_name": "FB-2026-00042",
-  "_site": "dcnet.localhost"
+  "_site": "<site>"
 }
 ```
 
 `_doc_name` lets you cross-reference to the DocType row:
 
 ```bash
-bench --site dcnet.localhost execute frappe.client.get_value \
+bench --site <site> execute frappe.client.get_value \
   --kwargs '{"doctype":"Feedback Comment","filters":"FB-2026-00042","fieldname":"status"}'
 ```
 
@@ -111,10 +111,10 @@ bench --site dcnet.localhost execute frappe.client.get_value \
 ## Install
 
 ```bash
-cd ~/long/frappe-bench-dcnet
+cd ~/long/frappe-bench-<bench>
 env/bin/pip install -e apps/feedback_widget
 echo feedback_widget >> sites/apps.txt
-bench --site dcnet.localhost install-app feedback_widget
+bench --site <site> install-app feedback_widget
 bench build --app feedback_widget
 bench restart  # required: app_include_js needs server reload
 ```
