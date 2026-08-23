@@ -343,3 +343,58 @@ def jsonl_path(project: str = None):
         frappe.throw(_("System Manager role required"), frappe.PermissionError)
     project = (project or "").strip() or "default"
     return {"path": str(_jsonl_path(project).resolve())}
+
+
+def _default_settings() -> dict:
+    return {
+        "enabled": True,
+        "enable_on_desk": True,
+        "enable_on_portal": True,
+        "allow_all_roles": True,
+        "allowed_roles": [],
+        "project_name": "",
+        "primary_color": "#1f3a5f",
+        "fab_color": "#047857",
+    }
+
+
+@frappe.whitelist(allow_guest=True, methods=["GET", "POST"])
+def get_settings() -> dict:
+    """Return public settings for feedback widget (cached)."""
+    try:
+        if not frappe.db or not frappe.db.exists("DocType", "Feedback Settings"):
+            return _default_settings()
+        doc = frappe.get_cached_doc("Feedback Settings")
+        roles = [r.role for r in doc.allowed_roles] if (not doc.allow_all_roles and doc.get("allowed_roles")) else []
+        return {
+            "enabled": bool(doc.enabled),
+            "enable_on_desk": bool(doc.enable_on_desk),
+            "enable_on_portal": bool(doc.enable_on_portal),
+            "allow_all_roles": bool(doc.allow_all_roles),
+            "allowed_roles": roles,
+            "project_name": (doc.project_name or "").strip(),
+            "primary_color": doc.primary_color or "#1f3a5f",
+            "fab_color": doc.fab_color or "#047857",
+        }
+    except Exception:
+        return _default_settings()
+
+
+def extend_bootinfo(bootinfo):
+    """Inject feedback widget settings and user eligibility into Desk bootinfo."""
+    settings = get_settings()
+    user = frappe.session.user
+    user_roles = frappe.get_roles(user) if user and user != "Guest" else []
+
+    is_eligible = False
+    if settings["enabled"] and settings["enable_on_desk"]:
+        if settings["allow_all_roles"]:
+            is_eligible = True
+        else:
+            is_eligible = any(r in user_roles for r in settings["allowed_roles"])
+
+    bootinfo.feedback_widget_settings = {
+        **settings,
+        "is_eligible": is_eligible,
+    }
+

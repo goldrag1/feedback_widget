@@ -84,13 +84,25 @@ import "./feedback_widget_core.js";
     return ctx;
   }
 
+  function shouldMount() {
+    const boot = window.frappe && window.frappe.boot;
+    if (!boot) return false;
+    const settings = boot.feedback_widget_settings;
+    if (!settings) return true; // fallback if bootinfo extension not loaded
+    return Boolean(settings.is_eligible);
+  }
+
   function init() {
+    if (!shouldMount()) return;
     if (window.__FBW_FRAPPE_MOUNTED__) return;
     window.__FBW_FRAPPE_MOUNTED__ = true;
 
-    // Project slug — same site can host multiple Frappe apps; tag by sitename
-    // so multiple demos at different bench ports stay separate in localStorage.
-    const project = ("dcnet-" + siteSlug()).replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
+    const boot = window.frappe && window.frappe.boot;
+    const settings = (boot && boot.feedback_widget_settings) || {};
+
+    // Project slug — allow override from Feedback Settings, fallback to site-derived slug
+    const customProject = (settings.project_name || "").trim();
+    const project = customProject || ("tamdinh-" + siteSlug()).replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
 
     const userId = (window.frappe.session && window.frappe.session.user) || "";
 
@@ -100,8 +112,8 @@ import "./feedback_widget_core.js";
       project: project,
       userId: userId,
       language: "vi",
-      primaryColor: "#1f3a5f",
-      fabColor: "#047857",
+      primaryColor: settings.primary_color || "#1f3a5f",
+      fabColor: settings.fab_color || "#047857",
       getScreenId: currentRoute,
       getScreenName: currentRouteName,
       getContext: getContext,

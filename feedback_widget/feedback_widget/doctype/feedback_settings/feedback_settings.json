@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-08-24 05:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_general",
+  "enabled",
+  "column_break_general",
+  "enable_on_desk",
+  "enable_on_portal",
+  "section_permissions",
+  "allow_all_roles",
+  "allowed_roles",
+  "section_customization",
+  "project_name",
+  "primary_color",
+  "column_break_custom",
+  "fab_color"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_general",
+   "fieldtype": "Section Break",
+   "label": "Tr\u1ea1ng th\u00e1i ho\u1ea1t \u0111\u1ed9ng"
+  },
+  {
+   "default": "1",
+   "description": "B\u1eadt ho\u1eb7c t\u1eaft to\u00e0n b\u1ed9 widget ph\u1ea3n h\u1ed3i tr\u00ean h\u1ec7 th\u1ed1ng",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "B\u1eadt Feedback Widget"
+  },
+  {
+   "fieldname": "column_break_general",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.enabled",
+   "description": "Hi\u1ec3n th\u1ecb n\u00fat ph\u1ea3n h\u1ed3i tr\u00ean giao di\u1ec7n Desk (/app)",
+   "fieldname": "enable_on_desk",
+   "fieldtype": "Check",
+   "label": "Hi\u1ec3n th\u1ecb tr\u00ean Desk"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.enabled",
+   "description": "Hi\u1ec3n th\u1ecb n\u00fat ph\u1ea3n h\u1ed3i tr\u00ean giao di\u1ec7n Mobile / Portal (nh\u01b0 /facility)",
+   "fieldname": "enable_on_portal",
+   "fieldtype": "Check",
+   "label": "Hi\u1ec3n th\u1ecb tr\u00ean Mobile / Portal"
+  },
+  {
+   "depends_on": "eval:doc.enabled",
+   "fieldname": "section_permissions",
+   "fieldtype": "Section Break",
+   "label": "Ph\u1ea1m vi hi\u1ec3n th\u1ecb theo vai tr\u00f2"
+  },
+  {
+   "default": "1",
+   "description": "N\u1ebfu b\u1eadt, t\u1ea5t c\u1ea3 ng\u01b0\u1eddi d\u00f9ng \u0111\u0103ng nh\u1eadp \u0111\u1ec1u th\u1ea5y widget. N\u1ebfu t\u1eaft, ch\u1ec9 nh\u1eefng vai tr\u00f2 \u0111\u01b0\u1ee3c ch\u1ecdn b\u00ean d\u01b0\u1edbi m\u1edbi th\u1ea5y.",
+   "fieldname": "allow_all_roles",
+   "fieldtype": "Check",
+   "label": "Cho ph\u00e9p t\u1ea5t c\u1ea3 vai tr\u00f2 (All Roles)"
+  },
+  {
+   "depends_on": "eval:!doc.allow_all_roles",
+   "description": "Danh s\u00e1ch c\u00e1c vai tr\u00f2 (Role) \u0111\u01b0\u1ee3c ph\u00e9p th\u1ea5y v\u00e0 g\u1eedi ph\u1ea3n h\u1ed3i",
+   "fieldname": "allowed_roles",
+   "fieldtype": "Table",
+   "label": "Vai tr\u00f2 \u0111\u01b0\u1ee3c ph\u00e9p",
+   "options": "Feedback Role Item"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval:doc.enabled",
+   "fieldname": "section_customization",
+   "fieldtype": "Section Break",
+   "label": "T\u00f9y bi\u1ebfn hi\u1ec3n th\u1ecb"
+  },
+  {
+   "description": "Ti\u1ec1n t\u1ed1 / t\u00ean nh\u1eadn di\u1ec7n d\u1ef1 \u00e1n. \u0110\u1ec3 tr\u1ed1ng s\u1ebd t\u1ef1 \u0111\u1ed9ng l\u1ea5y theo t\u00ean site.",
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "T\u00ean d\u1ef1 \u00e1n (Project slug)"
+  },
+  {
+   "default": "#1f3a5f",
+   "fieldname": "primary_color",
+   "fieldtype": "Data",
+   "label": "M\u00e0u ch\u1ee7 \u0111\u1ea1o (Primary Color)"
+  },
+  {
+   "fieldname": "column_break_custom",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "#047857",
+   "fieldname": "fab_color",
+   "fieldtype": "Data",
+   "label": "M\u00e0u n\u00fat b\u1ea5m n\u1ed5i (FAB Color)"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-24 05:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

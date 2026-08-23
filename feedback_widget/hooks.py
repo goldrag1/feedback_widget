@@ -13,3 +13,7 @@ app_version = "1.1.0"
 # Bundle that auto-mounts the widget on every desk page with Frappe-aware
 # callbacks. Cache-bust via content hash from assets.json — no ?version= suffix.
 app_include_js = ["feedback_widget.bundle.js"]
+
+extend_bootinfo = "feedback_widget.api.feedback.extend_bootinfo"
+
+
