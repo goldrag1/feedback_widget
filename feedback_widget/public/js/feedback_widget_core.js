@@ -1900,6 +1900,21 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     }
 
     _baoTuNetwork(url, status, text, ms) {
+      // Tiếng ồn HẠ TẦNG, không phải chỗ tắc của người dùng:
+      //   · `socket.io` polling đứt liên tục khi mạng chập chờn (và mỗi lần deploy);
+      //   · 502/503/504 lúc restart — đo trên prod 25/08: chính lượt deploy của mình
+      //     đẻ ra 6 "chỗ tắc" trong sổ, đứng đầu bảng xếp hạng.
+      // Bỏ chúng ở đây chứ không ở báo cáo: một cái sổ mà 90% là rác thì người ta thôi đọc.
+      const u = String(url || '');
+      if (u.indexOf('/socket.io/') !== -1 || u.indexOf('/assets/') !== -1) return;
+      if (status === 502 || status === 503 || status === 504) {
+        if (this.cfg.collectUsage) {
+          this._pushEvent({ kind: 'dung', outcome: 'huy', endpoint: this._tenEndpoint(u),
+                            http_status: status, duration_ms: ms,
+                            message: 'máy chủ tạm không phục vụ (' + status + ')' });
+        }
+        return;
+      }
       let msg = '';
       try {
         const j = JSON.parse(text || '{}');

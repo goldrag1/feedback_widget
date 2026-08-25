@@ -35,8 +35,11 @@ import "./feedback_widget_core.js";
       const r = window.frappe.get_route ? window.frappe.get_route() : [];
       goc = Array.isArray(r) ? r.join("/") : String(r || "");
     } catch (_e) { goc = location.pathname.replace(/^\/app\/?/, ""); }
+    // Trả CHÍNH cái hash khi có: danh mục màn của app chủ khai theo `#/lsx`, còn sự kiện
+    // mà ghi "steel-app#/lsx" thì hai bên KHÔNG khớp — báo cáo nói "56/56 màn chưa ai vào"
+    // trong khi người ta đang dùng. Đo trên prod 25/08 ngay lượt dữ liệu thật đầu tiên.
     const h = (location.hash || "").split("?")[0];
-    return h && h.length > 1 ? goc + h : goc;
+    return h && h.length > 1 ? h : goc;
   }
 
   function currentRouteName() {
