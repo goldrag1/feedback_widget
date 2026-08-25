@@ -99,7 +99,11 @@ def bac_cau_error_log():
                 "source": "auto",
                 "submitter": "(máy chủ)",
                 "tags": {"type": "bug", "severity": "blocker"},
+                # `endpoint` PHẢI có: `collect` tính chữ ký từ (thông điệp, endpoint), nên
+                # thiếu nó thì cầu gom một kiểu còn hộp thư gom một kiểu — một sự cố ra
+                # hai vé và con số "bao nhiêu lần" sai. Một luật, một khoá.
                 "context": {"app": {"nguon": "error_log", "error_log": r.name,
+                                    "endpoint": (r.method or "")[:200],
                                     "method": (r.method or "")[:200],
                                     "khi": str(r.creation)}},
             })
@@ -206,6 +210,7 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
                 "message": g["cau"], "source": "auto", "submitter": "(khai thác lịch sử)",
                 "tags": {"type": "bug", "severity": "blocker"},
                 "context": {"app": {"nguon": "error_log_lich_su", "so_lan": g["so_lan"],
+                                    "endpoint": (g["method"] or "")[:200],
                                     "tu": g["dau"], "den": g["cuoi"]}},
             })
             # Dán ĐÚNG số lần lịch sử lên vé. `collect` đếm theo lượt nạp này (1), nên để

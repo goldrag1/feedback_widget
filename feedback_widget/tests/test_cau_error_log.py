@@ -59,3 +59,17 @@ class TestCauErrorLog(FrappeTestCase):
 		self.assertTrue(kq["chay_thu"])
 		self.assertNotIn("ve", kq)
 		self.assertEqual(frappe.db.count("Feedback Comment", {"screen_id": "viec-nen"}), 0)
+
+	def test_cau_va_khai_thac_gom_CUNG_MOT_KHOA(self):
+		"""Bộ gom của cầu và chữ ký của hộp thư phải là MỘT.
+
+		Cầu gom theo (câu lỗi, method); `collect` tính chữ ký theo (thông điệp, endpoint).
+		Không truyền `endpoint` thì hai bên gom khác nhau: một sự cố ra hai vé và cột
+		"bao nhiêu lần" nói sai — đo trên prod 25/08, nhóm 18 lần bị tách thành 2 và 16.
+		"""
+		import inspect
+
+		for ham in (tac_vu.bac_cau_error_log, tac_vu.khai_thac_lich_su):
+			src = inspect.getsource(ham)
+			self.assertIn('"endpoint"', src,
+				f"{ham.__name__} không khai endpoint ⇒ chữ ký lệch khoá gom")
