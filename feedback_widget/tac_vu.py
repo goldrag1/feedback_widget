@@ -200,7 +200,7 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
     ve = 0
     for ck, g in nhom.items():
         try:
-            collect(**{
+            kq = collect(**{
                 "project": _du_an(), "screen_id": "viec-nen",
                 "screen_name": f"Việc nền · {(g['method'] or '')[:80]}",
                 "message": g["cau"], "source": "auto", "submitter": "(khai thác lịch sử)",
@@ -208,6 +208,12 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
                 "context": {"app": {"nguon": "error_log_lich_su", "so_lan": g["so_lan"],
                                     "tu": g["dau"], "den": g["cuoi"]}},
             })
+            # Dán ĐÚNG số lần lịch sử lên vé. `collect` đếm theo lượt nạp này (1), nên để
+            # nguyên thì vé nói "1 lần" cho một sự cố đã xảy ra 18 lần — con số sai theo
+            # hướng làm người xử lý hạ ưu tiên đúng thứ đáng sửa nhất.
+            if kq and kq.get("name"):
+                frappe.db.set_value("Feedback Comment", kq["name"], {
+                    "occurrences": g["so_lan"], "last_seen": g["cuoi"]}, update_modified=False)
             ve += 1
         except Exception:
             frappe.log_error(frappe.get_traceback(), "feedback_widget khai_thac_lich_su")
