@@ -37,6 +37,23 @@ except Exception as e:  # pragma: no cover — dev-time guard
 
 # Local Telegram notifier (stdlib multipart for sendPhoto / sendMediaGroup)
 from feedback_widget import notifier  # type: ignore
+from feedback_widget.cai_dat import cai_dat
+from feedback_widget.chu_ky import chu_ky as _tinh_chu_ky
+from feedback_widget.chu_ky import dau_hieu as _tinh_dau_hieu
+
+
+def _gop_danh_sach(cu: str, moi: str, tran: int = 500) -> str:
+    """Gộp một tên vào danh sách phân tách bằng '; ', không trùng, không tràn cột.
+
+    Vì sao cần: câu hỏi hữu ích nhất của một vé máy là "có mấy NGƯỜI dính, hay chỉ một
+    người bấm nhầm" — đếm lần không trả lời được, danh sách người thì có.
+    """
+    ds = [x.strip() for x in (cu or "").split(";") if x.strip()]
+    moi = (moi or "").strip()
+    if moi and moi not in ds:
+        ds.append(moi)
+    ra = "; ".join(ds)
+    return ra[:tran]
 
 
 def _normalise_payload(form_dict) -> dict:
@@ -145,6 +162,45 @@ def collect(**kwargs):
             })
     entry["attachments"] = attachments_clean  # propagate to raw_payload + jsonl
 
+    # ─── v1.6 — VÉ MÁY (source="auto") ────────────────────────────────────
+    # Máy tự ghi khi máy chủ TỪ CHỐI hoặc màn hình LỖI. Hai luật ở đây, và cả hai đều
+    # là điều kiện để tính năng dùng được thật:
+    #   1. GOM theo chữ ký — nếu không, một lỗi lặp 40 lần đẻ 40 vé và hộp thư của
+    #      người xử lý chết ngập, đúng cách để họ bỏ đọc luôn (kể cả vé người gõ).
+    #   2. Vé đã ĐÓNG mà chữ ký tái xuất thì mở vé MỚI, không cộng dồn vào vé cũ:
+    #      đó là hồi quy, phải nhìn thấy là một sự kiện riêng.
+    source = str(payload.get("source") or "user").strip().lower()
+    if source not in ("user", "auto"):
+        source = "user"
+    marker = _tinh_dau_hieu(entry["message"])
+    endpoint_ctx = ""
+    try:
+        endpoint_ctx = str(((ctx.get("app") or {}).get("endpoint")) or "")[:200]
+    except Exception:
+        endpoint_ctx = ""
+    signature = _tinh_chu_ky(entry["message"], endpoint_ctx, source) if source == "auto" else None
+
+    if source == "auto" and signature:
+        cu = frappe.db.get_value(
+            "Feedback Comment",
+            {"project": entry["project"], "signature": signature,
+             "status": ["in", ("New", "Triaged", "In Progress")]},
+            ["name", "occurrences", "affected_users", "affected_screens"], as_dict=True)
+        if cu:
+            nguoi = _gop_danh_sach(cu.affected_users, user_full_name or session_user)
+            man = _gop_danh_sach(cu.affected_screens, entry.get("screen_name") or entry["screen_id"])
+            frappe.db.set_value("Feedback Comment", cu.name, {
+                "occurrences": (cu.occurrences or 1) + 1,
+                "last_seen": ts_dt,
+                "affected_users": nguoi,
+                "affected_screens": man,
+            }, update_modified=False)
+            frappe.db.commit()
+            # KHÔNG đẩy Telegram lại: tin thứ hai trở đi không mang thông tin mới, chỉ
+            # dạy người ta tắt thông báo.
+            return {"ok": True, "name": cu.name, "merged": True,
+                    "occurrences": (cu.occurrences or 1) + 1, "saved_as": ""}
+
     doc = frappe.get_doc({
         "doctype": "Feedback Comment",
         "project": entry["project"],
@@ -167,6 +223,13 @@ def collect(**kwargs):
         "context": json.dumps(ctx, ensure_ascii=False) if ctx else None,
         "attachments": json.dumps(attachments_clean, ensure_ascii=False) if attachments_clean else None,
         "telegram_pushed": 0,
+        "source": source,
+        "signature": signature,
+        "marker": marker or None,
+        "occurrences": 1,
+        "last_seen": ts_dt,
+        "affected_users": (user_full_name or session_user or "")[:500] or None,
+        "affected_screens": (entry.get("screen_name") or entry["screen_id"] or "")[:500] or None,
         "raw_payload": json.dumps(entry, ensure_ascii=False),
     })
     doc.flags.ignore_permissions = False
@@ -188,8 +251,12 @@ def collect(**kwargs):
     # 3) Telegram push — async via the worker queue so the HTTP response
     # returns immediately. Soft-fail: the worker logs errors but never affects
     # the saved comment. Skipped silently if Telegram isn't configured.
+    _ct = cai_dat()
+    _duoc_day = True
+    if source == "auto" and not int(_ct.get("telegram_first_seen") or 0):
+        _duoc_day = False
     try:
-        if notifier.is_configured():
+        if _duoc_day and notifier.is_configured():
             frappe.enqueue(
                 "feedback_widget.api.feedback._push_telegram_for_doc",
                 queue="short",

@@ -135,3 +135,67 @@ For public mockups, deploy the standalone collector instead — see `~/.claude/s
 | `/api/method/feedback_widget.api.feedback.jsonl_path` | GET | System Manager | Get absolute path to JSONL inbox for a project |
 
 CSRF: the widget passes `X-Frappe-CSRF-Token` from `frappe.csrf_token` automatically.
+
+
+---
+
+# v1.6 — Sổ chặn tự động (auto telemetry)
+
+**Vấn đề nó giải:** người dùng không báo lỗi. Họ bị chặn, thử lại vài lần, rồi đi làm
+việc khác — dự án tưởng là êm. Đo trên một xưởng thép đang bàn giao (25/08/2026):
+538 chỗ `frappe.throw` trong app, **0 dấu vết** ở đường đồng bộ; 59 lần bị chặn trong
+9 ngày chỉ ghi được vì chúng đi qua việc nền, và không ai từng đọc.
+
+## Ba tầng
+
+| Tầng | Bảng | Trả lời |
+|---|---|---|
+| Sổ THÔ | `Feedback Event` | tần suất · mẫu số · chuỗi thao tác · thời gian |
+| VÉ | `Feedback Comment` với `source=auto`, gom theo `signature` | "có bao nhiêu LOẠI sự cố, ai đang xử" |
+| DANH MỤC | `Feedback Manifest Item` | "cái gì KHÔNG ai dùng" |
+
+Vé máy **gom theo chữ ký** (`chu_ky.py`, tính ở máy chủ): cùng một loại sự cố dù khác mã
+lô / khác số luôn về một vé, `occurrences` đếm lần, `affected_users` liệt kê ai. Vé đã
+`Resolved` mà chữ ký quay lại thì mở vé MỚI — hồi quy phải nhìn thấy được.
+
+## Thu từ đâu
+
+- **Lỗi trình duyệt** (`window.onerror`, promise treo, `console.error`) — widget đã bắt
+  sẵn từ v1.0, nay tự gửi thay vì đợi người bấm.
+- **Máy chủ từ chối** — móc ở CẢ `fetch` VÀ `XMLHttpRequest` (desk của Frappe gọi bằng
+  XHR; bản chỉ móc `fetch` bắt được 0 lần).
+- **App chủ báo trực tiếp** — `window.FeedbackWidget.report({message, endpoint, args})`,
+  nơi biết TÊN endpoint và THAM SỐ thật. Trùng với tầng mạng thì widget tự khử.
+- **Việc nền** — `tac_vu.bac_cau_error_log()` mỗi 15 phút đưa NGOẠI LỆ trong `Error Log`
+  vào cùng hộp thư (nhật ký thông tin thì bỏ qua). Lần đầu KHÔNG đọc ngược lịch sử;
+  muốn khai thác quá khứ thì gọi `tac_vu.khai_thac_lich_su(so_ngay=30)` — mặc định chạy thử.
+- **Hành vi** — mở màn, bấm nút, kết quả mỗi lần gọi API, gửi theo lô 15 giây và bằng
+  `sendBeacon` lúc rời trang; mất mạng thì xếp hàng ở `localStorage` rồi gửi bù.
+- **Danh mục nút** — widget KIỂM KÊ nút đang hiện trên màn người dùng vừa mở (không đọc
+  mã nguồn: bộ đọc mã phải đoán nút nào thuộc màn nào và sai lệch âm thầm).
+
+## Cài đặt (`Feedback Widget Settings`)
+
+`show_widget` tắt = **GIẤU nút 💬 nhưng VẪN thu** — dùng khi không muốn làm phiền công
+nhân mà vẫn cần biết họ tắc ở đâu. Ngoài ra: bật/tắt tự báo, bật/tắt sổ hành vi, tỉ lệ lấy
+mẫu, bóp ga theo chữ ký, trần sự kiện/phút, số ngày giữ sổ, danh sách khoá cần che, giờ
+gửi tổng kết.
+
+## Đọc kết quả
+
+Workspace **Feedback** → 3 báo cáo: `Blockers` (chỗ tắc, xếp theo SỐ NGƯỜI), `Screen
+Behaviour` (lượt vào · thao tác · % chặn/lỗi), `Unused UI` (màn/nút chưa ai dùng).
+Cho coding agent: `bench --site <site> execute feedback_widget.phan_tich.bao_cao
+--kwargs "{'so_ngay': 7}"` in ra Markdown xếp hạng sẵn (skill `feedback-telemetry`).
+
+## App chủ nối vào (tuỳ chọn, 2 việc)
+
+1. Nhánh lỗi của lớp gọi API gọi `window.FeedbackWidget.report({message, endpoint, args})`.
+2. Lúc `after_migrate` gọi `feedback_widget.api.su_kien.khai_danh_muc(items=[{kind:"screen",
+   item_id, item_name}])` để "màn không ai vào" đo được.
+
+## Riêng tư
+
+Tham số được che theo danh sách khoá ở mọi độ sâu trước khi ghi. Sổ thô tự xoá sau
+`retention_days` (mặc định 90). Đây là công cụ đo VIỆC, không phải đo NGƯỜI — nên nói
+trước với người dùng rằng hệ ghi lại chỗ bị chặn để sửa phần mềm.

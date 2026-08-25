@@ -65,6 +65,17 @@
     enableContext: true,            // auto-capture context bundle on send
     enableAttach: true,             // 📎 image attachment (file picker + paste)
     contextHistorySize: 20,         // ring-buffer length for actions + errors
+    // v1.6 — thu thập TỰ ĐỘNG (đặt ở máy chủ qua Feedback Widget Settings)
+    showWidget: true,               // false = GIẤU nút 💬 mà VẪN thu thập
+    autoReport: false,              // tự gửi vé khi máy chủ từ chối / màn hình lỗi
+    collectUsage: false,            // ghi sổ hành vi (mở màn, bấm nút, kết quả gọi API)
+    usageSamplePct: 100,
+    throttleMinutes: 10,            // cùng người + cùng lỗi: gửi lại sau ngần này phút
+    lapLaiCanhBao: 3,               // lặp bấy nhiêu lần trong 15' = ĐANG KẸT (đánh dấu blocker)
+    maxEventsPerMinute: 120,
+    eventEndpoint: '',              // /api/method/feedback_widget.api.su_kien.ghi_lo
+    inventoryEndpoint: '',          // kiểm kê nút đang hiện → danh mục
+    redactKeys: ['password', 'token', 'secret', 'api_key', 'pin', 'otp', 'csrf'],
     uploadEndpoint: '/api/method/upload_file',  // Frappe-shaped; override for non-Frappe hosts
     uploadFieldName: 'file',        // multipart field name expected by uploadEndpoint
     uploadExtraFields: { is_private: '1', folder: 'Home/Feedback' },  // extra form fields
@@ -736,11 +747,17 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     // ---------- DOM mount ----------
     mount() {
       injectCSSOnce();
-      this._mountFab();
-      this._mountSheet();
-      this._wireEvents();
-      this._updateFab();
+      // GIẤU nút nhưng VẪN THU: hai việc khác nhau, và gộp chúng làm một là lý do phải
+      // chọn giữa "làm phiền công nhân" và "mù thông tin". Ẩn nút thì bỏ hẳn phần giao
+      // diện (không dựng FAB/sheet) — không CSS ẩn, để không ai bấm nhầm vào nút vô hình.
+      if (this.cfg.showWidget !== false) {
+        this._mountFab();
+        this._mountSheet();
+        this._wireEvents();
+        this._updateFab();
+      }
       if (this.cfg.enableContext) this._initContextCapture();
+      this._initAuto();
       // Try to flush pending offline messages on mount
       setTimeout(() => this._resendPending(), 1500);
       // v1.4 — pull status updates so prior comments show their current state
@@ -1611,6 +1628,354 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       });
     }
 
+    // ═══ v1.6 — THU TỰ ĐỘNG ═══════════════════════════════════════════════
+    // Widget đã bắt sẵn lỗi trình duyệt + vệt thao tác từ v1.0, nhưng chỉ gửi khi có
+    // NGƯỜI bấm nút. Công nhân không bấm ⇒ vòng đệm chết theo tab và bên làm phần mềm
+    // mù suốt nhiều ngày (đo tại một xưởng thép: 59 lần bị chặn trong 9 ngày, 0 báo cáo).
+    // Ba nguồn dưới đây tự mở van đó, kèm bóp ga để không biến hộp thư thành bãi rác.
+    _initAuto() {
+      this._sig = {};              // chữ ký → { lan, gui_luc } (bóp ga + đếm lặp)
+      this._evQueue = [];
+      this._evMinuteCount = 0;
+      this._sessionId = this._sessionIdInit();
+      setInterval(() => { this._evMinuteCount = 0; }, 60000);
+
+      if (this.cfg.autoReport) this._hookErrors();
+      if (this.cfg.autoReport || this.cfg.collectUsage) this._hookNetwork();
+      if (this.cfg.collectUsage) this._hookUsage();
+      if (this.cfg.collectUsage || this.cfg.autoReport) {
+        setInterval(() => this._flushEvents(), 15000);
+        window.addEventListener('pagehide', () => this._flushEvents(true));
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'hidden') this._flushEvents(true);
+        });
+        this._flushOfflineQueue();
+        window.addEventListener('online', () => this._flushOfflineQueue());
+      }
+    }
+
+    _sessionIdInit() {
+      try {
+        let id = sessionStorage.getItem('fbw_sid');
+        if (!id) { id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); sessionStorage.setItem('fbw_sid', id); }
+        return id;
+      } catch (_e) { return 'nosess'; }
+    }
+
+    // Chữ ký PHÍA CLIENT chỉ để bóp ga và đếm lặp. Chữ ký THẬT do máy chủ tính
+    // (feedback_widget/chu_ky.py) — một luật, một bản cài đặt.
+    _sigTho(msg) {
+      return String(msg || '').replace(/\d+/g, '#').replace(/\s+/g, ' ').trim().slice(0, 160);
+    }
+
+    _nenGui(sig) {
+      const now = Date.now();
+      const rec = this._sig[sig] || { lan: 0, gui_luc: 0, dau: now };
+      if (now - rec.dau > 15 * 60000) { rec.lan = 0; rec.dau = now; }
+      rec.lan += 1;
+      const nguong = Math.max(1, (this.cfg.throttleMinutes | 0)) * 60000;
+      const cho_phep = (now - rec.gui_luc) > nguong;
+      if (cho_phep) rec.gui_luc = now;
+      this._sig[sig] = rec;
+      return { cho_phep, lan: rec.lan };
+    }
+
+    /** Gửi một vé MÁY (source=auto) kèm đúng gói ngữ cảnh mà vé tay vẫn gửi. */
+    report(o) {
+      try {
+        if (!this.cfg.autoReport) return;
+        const msg = String((o && o.message) || '').slice(0, 4000);
+        if (!msg) return;
+        const sig = this._sigTho(msg);
+        // MỘT sự cố, HAI người báo: widget bắt ở tầng mạng (biết endpoint + mã HTTP),
+        // app chủ báo ở tầng gọi (biết THAM SỐ và chứng từ). Cùng lúc thì sổ đếm đôi và
+        // "3 lần" hoá "6 lần" — con số sai theo hướng nguy hiểm nhất là hướng làm to.
+        // Bản của app chủ được ưu tiên: nó tới trước, bản mạng đi sau 700ms sẽ tự tắt.
+        this._sigMoi = this._sigMoi || {};
+        const truoc = this._sigMoi[sig] || 0;
+        if (Date.now() - truoc < 3000) return;
+        this._sigMoi[sig] = Date.now();
+        const { cho_phep, lan } = this._nenGui(sig);
+        // Luôn ghi vào SỔ (rẻ, để đếm được), nhưng chỉ mở VÉ khi qua bóp ga.
+        this._pushEvent({
+          kind: (o && o.kind) || 'chan',
+          message: msg,
+          endpoint: (o && o.endpoint) || '',
+          action_id: (o && o.action_id) || '',
+          outcome: (o && o.kind) === 'loi' ? 'loi' : 'chan',
+          http_status: (o && o.http_status) || 0,
+          duration_ms: (o && o.duration_ms) || 0,
+          doc_ref: (o && o.doc_ref) || '',
+          context: { args: this._redact((o && o.args) || null), lan_lien_tiep: lan },
+        });
+        if (!cho_phep) return;
+        const ctx = this._buildContextBundle ? this._buildContextBundle() : {};
+        ctx.app = Object.assign({}, ctx.app || {}, {
+          nguon: 'auto',
+          endpoint: (o && o.endpoint) || '',
+          http_status: (o && o.http_status) || 0,
+          lan_lien_tiep: lan,
+          args: this._redact((o && o.args) || null),
+        });
+        const ket = Math.max(1, this.cfg.lapLaiCanhBao | 0);
+        const payload = {
+          project: this.cfg.project,
+          screen_id: this._screenId(),
+          screen_name: this._screenName(),
+          message: msg,
+          source: 'auto',
+          submitter: '(máy)',
+          ts: new Date().toISOString(),
+          user_agent: navigator.userAgent,
+          tags: {
+            type: 'bug',
+            // Lặp nhiều lần trong 15 phút nghĩa là người ta ĐANG đứng đó thử lại —
+            // đó là chặn đường, không phải phiền nhẹ.
+            severity: (o && o.kind) === 'loi' ? 'blocker' : (lan >= ket ? 'blocker' : 'annoying'),
+          },
+          context: ctx,
+        };
+        this._postJSON(this.cfg.endpoint, payload);
+      } catch (_e) { /* ghi sổ không bao giờ được làm hỏng thao tác */ }
+    }
+
+    _redact(obj, depth) {
+      const keys = this.cfg.redactKeys || [];
+      const d = depth || 0;
+      if (d > 4 || obj == null) return obj;
+      if (Array.isArray(obj)) return obj.slice(0, 20).map((x) => this._redact(x, d + 1));
+      if (typeof obj === 'object') {
+        const out = {};
+        Object.keys(obj).slice(0, 40).forEach((k) => {
+          out[k] = keys.some((rk) => rk && String(k).toLowerCase().includes(rk))
+            ? '***' : this._redact(obj[k], d + 1);
+        });
+        return out;
+      }
+      if (typeof obj === 'string') return obj.slice(0, 500);
+      return obj;
+    }
+
+    _screenId() { try { return String(this.cfg.getScreenId ? this.cfg.getScreenId() : location.hash || location.pathname); } catch (_e) { return ''; } }
+    _screenName() { try { return String(this.cfg.getScreenName ? this.cfg.getScreenName() : document.title); } catch (_e) { return ''; } }
+
+    _pushEvent(e) {
+      if (this._evMinuteCount >= (this.cfg.maxEventsPerMinute | 0 || 120)) return;
+      if (e.kind === 'dung') {
+        const pct = this.cfg.usageSamplePct | 0;
+        if (pct < 100 && Math.random() * 100 >= pct) return;
+      }
+      this._evMinuteCount += 1;
+      this._evQueue.push(Object.assign({
+        screen_id: this._screenId(),
+        screen_name: this._screenName(),
+        session_id: this._sessionId,
+        form_factor: (this._detectFormFactor && this._detectFormFactor()) || '',
+      }, e));
+      if (this._evQueue.length >= 40) this._flushEvents();
+    }
+
+    _flushEvents(dungBeacon) {
+      if (!this._evQueue.length || !this.cfg.eventEndpoint) return;
+      const lo = this._evQueue.splice(0, 100);
+      const body = JSON.stringify({ events: lo, project: this.cfg.project });
+      // Rời trang thì `fetch` bị huỷ giữa chừng — `sendBeacon` là đường DUY NHẤT còn
+      // gửi được, và đúng lúc đó mới là lúc sổ quý nhất (người ta bỏ đi vì tắc).
+      if (dungBeacon && navigator.sendBeacon) {
+        try {
+          const ok = navigator.sendBeacon(this.cfg.eventEndpoint, new Blob([body], { type: 'application/json' }));
+          if (ok) return;
+        } catch (_e) { /* rơi xuống fetch */ }
+      }
+      this._postJSON(this.cfg.eventEndpoint, JSON.parse(body), lo);
+    }
+
+    _postJSON(url, payload, luuLaiNeuHong) {
+      if (!url) return Promise.resolve();
+      const headers = Object.assign({ 'Content-Type': 'application/json' },
+        (typeof this.cfg.fetchHeaders === 'function' ? this.cfg.fetchHeaders() : {}));
+      return fetch(url, { method: 'POST', headers, body: JSON.stringify(payload), keepalive: true })
+        .catch(() => { if (luuLaiNeuHong) this._luuOffline(luuLaiNeuHong); });
+    }
+
+    // Máy xưởng rớt mạng là chuyện thường ngày; mất đúng những sự kiện của lúc mạng
+    // chập chờn là mất đúng thứ cần nhìn nhất.
+    _luuOffline(lo) {
+      try {
+        const cu = JSON.parse(localStorage.getItem('fbw_ev_offline') || '[]');
+        localStorage.setItem('fbw_ev_offline', JSON.stringify(cu.concat(lo).slice(-300)));
+      } catch (_e) {}
+    }
+
+    _flushOfflineQueue() {
+      try {
+        const cu = JSON.parse(localStorage.getItem('fbw_ev_offline') || '[]');
+        if (!cu.length) return;
+        localStorage.removeItem('fbw_ev_offline');
+        this._postJSON(this.cfg.eventEndpoint, { events: cu.slice(0, 100), project: this.cfg.project }, cu);
+      } catch (_e) {}
+    }
+
+    _hookErrors() {
+      window.addEventListener('error', (e) => {
+        const m = String((e && e.message) || '');
+        if (!m) return;
+        this.report({ kind: 'loi', message: m + ' @ ' + String((e && e.filename) || '').slice(-80) + ':' + ((e && e.lineno) | 0) });
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        const r = e && e.reason;
+        const m = (r && (r.message || String(r))) || '';
+        if (m) this.report({ kind: 'loi', message: 'Promise: ' + String(m) });
+      });
+    }
+
+    /** Bắt câu TỪ CHỐI của máy chủ ở tầng mạng — không cần app chủ sửa gì.
+     *
+     * PHẢI móc CẢ HAI đường: `fetch` VÀ `XMLHttpRequest`. Đo trong trình duyệt 25/08:
+     * desk của Frappe gọi qua XHR (jQuery), nên bản chỉ móc `fetch` bắt được 0 lần từ
+     * chối — im lặng đúng kiểu tính năng này sinh ra để chống, và chỉ lộ khi bấm thật.
+     */
+    _hookXHR() {
+      const self = this;
+      if (window.__fbwXHRPatched) return;
+      const X = window.XMLHttpRequest;
+      if (!X || !X.prototype) return;
+      window.__fbwXHRPatched = true;
+      const open = X.prototype.open;
+      const send = X.prototype.send;
+      X.prototype.open = function (method, url) {
+        this.__fbwUrl = url; this.__fbwT0 = Date.now();
+        return open.apply(this, arguments);
+      };
+      X.prototype.send = function () {
+        try {
+          this.addEventListener('load', function () {
+            try {
+              const url = String(this.__fbwUrl || '');
+              if (url.indexOf('feedback_widget') !== -1) return;
+              const ms = Date.now() - (this.__fbwT0 || Date.now());
+              if (this.status >= 400) {
+                self._baoTuNetwork(url, this.status, this.responseText, ms);
+              } else if (self.cfg.collectUsage && url.indexOf('/api/method/') !== -1) {
+                self._pushEvent({ kind: 'dung', outcome: 'ok',
+                                  endpoint: self._tenEndpoint(url), duration_ms: ms });
+              }
+            } catch (_e) {}
+          });
+        } catch (_e) {}
+        return send.apply(this, arguments);
+      };
+    }
+
+    _hookNetwork() {
+      this._hookXHR();
+      const self = this;
+      const goc = window.fetch;
+      if (!goc || window.__fbwFetchPatched) return;
+      window.__fbwFetchPatched = true;
+      window.fetch = function (input, init) {
+        const t0 = Date.now();
+        const url = (typeof input === 'string' ? input : (input && input.url)) || '';
+        return goc.apply(this, arguments).then((res) => {
+          try {
+            if (url.indexOf('feedback_widget') === -1) {
+              const ms = Date.now() - t0;
+              if (!res.ok) {
+                res.clone().text().then((t) => {
+                  self._baoTuNetwork(url, res.status, t, ms);
+                }).catch(() => {});
+              } else if (self.cfg.collectUsage) {
+                self._pushEvent({ kind: 'dung', outcome: 'ok', endpoint: self._tenEndpoint(url), duration_ms: ms });
+              }
+            }
+          } catch (_e) {}
+          return res;
+        });
+      };
+    }
+
+    _tenEndpoint(url) {
+      const m = String(url || '').match(/\/api\/method\/([^?]+)/);
+      return m ? m[1] : String(url || '').slice(0, 120);
+    }
+
+    _baoTuNetwork(url, status, text, ms) {
+      let msg = '';
+      try {
+        const j = JSON.parse(text || '{}');
+        const sm = j._server_messages;
+        if (sm) { const arr = JSON.parse(sm); if (arr.length) msg = (JSON.parse(arr[0]).message || ''); }
+        if (!msg) msg = j.exception || j._error_message || '';
+      } catch (_e) {}
+      if (!msg) msg = 'HTTP ' + status + ' · ' + this._tenEndpoint(url);
+      msg = String(msg).replace(/<[^>]+>/g, '').trim().slice(0, 1000);
+      // 403 khi CHƯA đăng nhập không phải chỗ tắc — đó là màn đăng nhập làm việc của nó.
+      if (status === 403 && /login|not permitted|CSRF/i.test(msg) && !this._daDangNhap()) return;
+      setTimeout(() => {
+        this.report({ kind: status >= 500 ? 'loi' : 'chan', message: msg,
+                      endpoint: this._tenEndpoint(url), http_status: status, duration_ms: ms });
+      }, 700);
+    }
+
+    _daDangNhap() {
+      try { return !!(window.frappe && window.frappe.session && window.frappe.session.user
+                      && window.frappe.session.user !== 'Guest'); } catch (_e) { return true; }
+    }
+
+    _hookUsage() {
+      // Mở màn
+      const ghiMan = () => this._pushEvent({ kind: 'dung', outcome: 'ok', action_id: '' });
+      ghiMan();
+      window.addEventListener('hashchange', ghiMan);
+      try { if (window.frappe && window.frappe.router) window.frappe.router.on('change', ghiMan); } catch (_e) {}
+
+      // KIỂM KÊ nút đang hiện — để trả lời được "nút nào KHÔNG ai bấm". Sổ chỉ thấy
+      // cái được bấm; danh mục phải đến từ chỗ khác, và DOM thật là nguồn không bao giờ
+      // trôi lệch khỏi thứ người dùng nhìn thấy. Trễ 1,5s cho màn vẽ xong, mỗi màn chỉ
+      // kiểm kê MỘT LẦN trong phiên (danh mục là thứ tĩnh, không phải sự kiện).
+      this._daKiemKe = {};
+      const kiemKe = () => {
+        const man = this._screenId();
+        if (!man || this._daKiemKe[man]) return;
+        setTimeout(() => {
+          if (this._daKiemKe[man]) return;
+          this._daKiemKe[man] = 1;
+          const ds = [];
+          document.querySelectorAll('button, a.sa-btn, [data-fb-id], [role="button"]').forEach((el) => {
+            if (el.closest('.fbw-fab, .fbw-sheet, .fbw-backdrop')) return;
+            if (!(el.offsetWidth || el.offsetHeight)) return;     // đang ẩn thì không tính
+            const nhan = (el.getAttribute('aria-label') || el.innerText || el.title || '')
+              .replace(/\s+/g, ' ').trim().slice(0, 60);
+            const id = el.getAttribute('data-fb-id') || (man + '::' + nhan);
+            if (!nhan && !el.getAttribute('data-fb-id')) return;
+            if (ds.length < 60) ds.push({ item_id: id, item_name: nhan, screen_id: man });
+          });
+          if (ds.length && this.cfg.inventoryEndpoint) {
+            this._postJSON(this.cfg.inventoryEndpoint, { items: ds, project: this.cfg.project });
+          }
+        }, 1500);
+      };
+      kiemKe();
+      window.addEventListener('hashchange', kiemKe);
+      try { if (window.frappe && window.frappe.router) window.frappe.router.on('change', kiemKe); } catch (_e) {}
+
+      // Bấm nút. Ưu tiên `data-fb-id` do app chủ khai; không có thì suy từ NHÃN + màn,
+      // vì bắt app chủ dán id vào 500 nút mới đo được là cách chắc chắn không ai làm.
+      document.addEventListener('click', (e) => {
+        const t = e.target && e.target.closest && e.target.closest('button, a.sa-btn, [data-fb-id], [role="button"]');
+        if (!t) return;
+        if (t.closest('.fbw-fab, .fbw-sheet, .fbw-backdrop')) return;
+        const nhan = (t.innerText || t.title || t.getAttribute('aria-label') || '')
+          .replace(/\s+/g, ' ').trim().slice(0, 60);
+        // Nút KHÔNG nhãn và KHÔNG `data-fb-id` thì id sẽ là "màn::" — trùng nhau giữa mọi
+        // nút biểu tượng trên cùng màn, tức một dòng sổ vô nghĩa mà lại trông như dữ liệu.
+        // Thà không đếm còn hơn đếm sai (nút biểu tượng cần app chủ khai `data-fb-id`).
+        const id = t.getAttribute('data-fb-id') || (nhan ? this._screenId() + '::' + nhan : '');
+        if (!id) return;
+        this._pushEvent({ kind: 'dung', outcome: 'ok', action_id: id });
+      }, true);
+    }
+
     _pushAction(a, max) {
       this._recentActions.push(a);
       if (this._recentActions.length > (max || 20)) this._recentActions.shift();
@@ -1806,6 +2171,10 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     },
     refreshScreen() {
       if (global.__fbw_instance__) global.__fbw_instance__.refreshScreen();
+    },
+    /** App chủ gọi khi BIẾT rõ ngữ cảnh hơn tầng mạng (tên endpoint, tham số, chứng từ). */
+    report(o) {
+      if (global.__fbw_instance__) global.__fbw_instance__.report(o || {});
     },
   };
 

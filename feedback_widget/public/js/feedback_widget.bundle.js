@@ -26,10 +26,17 @@ import "./feedback_widget_core.js";
   }
 
   function currentRoute() {
+    // PHẢI kèm hash: app một-trang (steel_app, mọi SPA cắm vào desk) điều hướng bằng
+    // `#/...` trong khi `frappe.get_route()` chỉ trả tên TRANG ("steel-app"). Thiếu hash
+    // thì 58 màn gộp thành MỘT dòng trong sổ và mọi câu hỏi "màn nào" mất nghĩa —
+    // đo trong trình duyệt 25/08: 100% sự kiện rơi vào screen_id "steel-app".
+    let goc = "";
     try {
       const r = window.frappe.get_route ? window.frappe.get_route() : [];
-      return Array.isArray(r) ? r.join("/") : String(r || "");
-    } catch (_e) { return location.pathname.replace(/^\/app\/?/, ""); }
+      goc = Array.isArray(r) ? r.join("/") : String(r || "");
+    } catch (_e) { goc = location.pathname.replace(/^\/app\/?/, ""); }
+    const h = (location.hash || "").split("?")[0];
+    return h && h.length > 1 ? goc + h : goc;
   }
 
   function currentRouteName() {
@@ -106,10 +113,24 @@ import "./feedback_widget_core.js";
 
     const userId = (window.frappe.session && window.frappe.session.user) || "";
 
+    // v1.6 — cài đặt do MÁY CHỦ quyết (Feedback Widget Settings), đi kèm boot nên
+    // không tốn thêm một vòng mạng. Site chưa migrate → boot rỗng → mặc định an toàn:
+    // hiện nút như cũ, KHÔNG tự thu (không bao giờ bật một thứ ghi dữ liệu bằng suy đoán).
+    const ct = (window.frappe.boot && window.frappe.boot.feedback_widget) || {};
+
     window.FeedbackWidget.mount({
       endpoint: "/api/method/feedback_widget.api.feedback.collect",
       statusEndpoint: "/api/method/feedback_widget.api.feedback.status_for_names",
-      project: project,
+      eventEndpoint: "/api/method/feedback_widget.api.su_kien.ghi_lo",
+      inventoryEndpoint: "/api/method/feedback_widget.api.su_kien.kiem_ke_giao_dien",
+      project: (ct.project || project),
+      showWidget: ct.show_widget === undefined ? true : !!ct.show_widget,
+      autoReport: !!ct.auto_report,
+      collectUsage: !!ct.collect_usage,
+      usageSamplePct: ct.usage_sample_pct === undefined ? 100 : ct.usage_sample_pct,
+      throttleMinutes: ct.throttle_minutes === undefined ? 10 : ct.throttle_minutes,
+      maxEventsPerMinute: ct.max_events_per_minute === undefined ? 120 : ct.max_events_per_minute,
+      redactKeys: Array.isArray(ct.redact_keys) ? ct.redact_keys : undefined,
       userId: userId,
       language: "vi",
       primaryColor: settings.primary_color || "#1f3a5f",

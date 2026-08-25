@@ -1,0 +1,96 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{project}::{kind}::{item_id}",
+ "creation": "2026-08-25 13:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "project",
+  "kind",
+  "item_id",
+  "item_name",
+  "screen_id",
+  "column_break_1",
+  "section_hint",
+  "nguon",
+  "con_dung"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Data",
+   "label": "Dự án",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "kind",
+   "fieldtype": "Select",
+   "label": "Loại",
+   "options": "screen\naction",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "item_id",
+   "fieldtype": "Data",
+   "label": "Mã",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Tên"
+  },
+  {
+   "fieldname": "screen_id",
+   "fieldtype": "Data",
+   "label": "Thuộc màn",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "label": "Column Break 1"
+  },
+  {
+   "fieldname": "section_hint",
+   "fieldtype": "Data",
+   "label": "Nhóm"
+  },
+  {
+   "fieldname": "nguon",
+   "fieldtype": "Data",
+   "label": "Nguồn khai báo",
+   "description": "Tệp/bộ sinh đã khai mục này (vd screens.json)"
+  },
+  {
+   "fieldname": "con_dung",
+   "fieldtype": "Check",
+   "label": "Còn trong mã",
+   "default": "1"
+  }
+ ],
+ "links": [],
+ "module": "Feedback Widget",
+ "name": "Feedback Manifest Item",
+ "owner": "Administrator",
+ "search_fields": "project,item_id,item_name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "item_name",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "create": 1,
+   "read": 1,
+   "write": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  }
+ ]
+}
