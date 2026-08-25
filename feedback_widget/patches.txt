@@ -1,1 +1,8 @@
+[pre_model_sync]
+
+[post_model_sync]
+# PHẢI có ĐỦ HAI mục. Thiếu `[post_model_sync]` thì patch chạy TRƯỚC khi DocType tồn tại
+# ("No module named frappe.core.doctype.…"); thiếu `[pre_model_sync]` thì Frappe từ chối
+# thẳng ("Patch type PatchType.pre_model_sync not found"). Cả hai đều làm `bench migrate`
+# dừng giữa chừng — đã cắn cả hai trên prod 25/08.
 feedback_widget.patches.v1_gieo_cai_dat_mac_dinh
