@@ -44,7 +44,9 @@ def _cua_toi(user: str) -> list:
 			 SELECT 1 FROM `tabFeedback Notice Seen` s
 			  WHERE s.thong_bao = n.name AND s.user = %s)
 		 ORDER BY n.creation DESC
-		 LIMIT 5
+		 -- Trần 50 là chốt chặn kỹ thuật (một truy vấn không được trả vô hạn), KHÔNG
+		 -- phải trần nghiệp vụ: cần báo bao nhiêu thì báo bấy nhiêu.
+		 LIMIT 50
 	""", [bay_gio, bay_gio, user] + vai + [user], as_dict=True)
 
 

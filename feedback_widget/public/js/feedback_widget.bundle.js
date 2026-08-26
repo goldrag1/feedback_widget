@@ -217,9 +217,8 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
         return tb.pham_vi === "Một người" && !daDay[tb.name];
       });
       if (!rieng.length) return;
-      // Tối đa 2 thẻ một lúc: thẻ đứng cho tới khi người dùng đóng (hoặc hết trần giây
-      // khai ở Cài đặt), nên 5 cái xếp chồng sẽ che mất màn hình họ đang làm việc.
-      rieng = rieng.slice(0, 2);
+      // KHÔNG chặn số thẻ: chủ đầu tư chốt 26/08 "cần gửi bao nhiêu cứ gửi". Chồng thẻ
+      // tự cuộn được (xem `thong_bao_the.js`) nên nhiều thẻ không khoá màn hình.
       rieng.forEach(function (tb) { daDay[tb.name] = 1; });
       window.FeedbackNotices.show(rieng);
     }

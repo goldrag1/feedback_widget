@@ -14,7 +14,9 @@
  */
 (function (global) {
   var TRAN_MAC_DINH_GIAY = 20;
-  var TOI_DA = 3;
+  // Cố ý KHÔNG có trần số thẻ (chủ đầu tư chốt 26/08): thứ cần báo thì phải tới nơi.
+  // Thay vì cắt bớt, chồng thẻ được giới hạn CHIỀU CAO và cuộn — người dùng vẫn thấy
+  // hết, mà màn hình họ đang làm việc không bị khoá.
 
   /** Trần thời gian đứng của thẻ, giây. 0 = không tự ẩn. Đọc từ boot (Cài đặt); site
    *  chưa migrate thì KHÔNG có khoá này — vẫn phải có trần, nếu không một thẻ bị bỏ quên
@@ -52,10 +54,12 @@
     css(el, hep ? {
       position: "fixed", left: "12px", right: "12px", bottom: "76px", zIndex: "99998",
       display: "flex", flexDirection: "column", gap: "10px", maxWidth: "none",
+      maxHeight: "calc(100vh - 150px)", overflowY: "auto",
     } : {
       position: "fixed", right: "18px", bottom: "92px", zIndex: "99998",
       display: "flex", flexDirection: "column", gap: "10px",
       maxWidth: "min(360px, calc(100vw - 36px))",
+      maxHeight: "calc(100vh - 150px)", overflowY: "auto",
     });
     document.body.appendChild(el);
     return el;
@@ -150,7 +154,7 @@
 
   global.FeedbackNotices = {
     show: function (ds) {
-      var list = (ds || []).slice(0, TOI_DA);
+      var list = ds || [];
       if (!list.length) return 0;
       var khung = khungChua();
       list.forEach(function (tb) { veThe(tb, khung); });
