@@ -65,7 +65,7 @@
     enableContext: true,            // auto-capture context bundle on send
     enableAttach: true,             // 📎 image attachment (file picker + paste)
     contextHistorySize: 20,         // ring-buffer length for actions + errors
-    // v1.6 — thu thập TỰ ĐỘNG (đặt ở máy chủ qua Feedback Widget Settings)
+    // v1.6 — thu thập TỰ ĐỘNG (đặt ở máy chủ qua Feedback Settings)
     showWidget: true,               // false = GIẤU nút 💬 mà VẪN thu thập
     autoReport: false,              // tự gửi vé khi máy chủ từ chối / màn hình lỗi
     collectUsage: false,            // ghi sổ hành vi (mở màn, bấm nút, kết quả gọi API)

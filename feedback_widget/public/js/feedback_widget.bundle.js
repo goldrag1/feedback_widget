@@ -98,8 +98,12 @@ import "./feedback_widget_core.js";
     const boot = window.frappe && window.frappe.boot;
     if (!boot) return false;
     const settings = boot.feedback_widget_settings;
-    if (!settings) return true; // fallback if bootinfo extension not loaded
-    return Boolean(settings.is_eligible);
+    const ct = boot.feedback_widget || {};
+    if (!settings) return true; // chưa có bootinfo mở rộng → giữ nếp cũ
+    // GẮN kể cả khi người này không được thấy nút: hiện nút và THU là hai việc khác nhau.
+    // Bản 24/08 trả false ở đây, nên bật "ẩn nút" là mất luôn sổ chặn — mà ẩn nút cho công
+    // nhân đúng là ca dùng chính của nó.
+    return Boolean(settings.is_eligible) || Boolean(ct.auto_report) || Boolean(ct.collect_usage);
   }
 
   function init() {
@@ -116,7 +120,7 @@ import "./feedback_widget_core.js";
 
     const userId = (window.frappe.session && window.frappe.session.user) || "";
 
-    // v1.6 — cài đặt do MÁY CHỦ quyết (Feedback Widget Settings), đi kèm boot nên
+    // v1.6 — cài đặt do MÁY CHỦ quyết (Feedback Settings), đi kèm boot nên
     // không tốn thêm một vòng mạng. Site chưa migrate → boot rỗng → mặc định an toàn:
     // hiện nút như cũ, KHÔNG tự thu (không bao giờ bật một thứ ghi dữ liệu bằng suy đoán).
     const ct = (window.frappe.boot && window.frappe.boot.feedback_widget) || {};
@@ -127,7 +131,10 @@ import "./feedback_widget_core.js";
       eventEndpoint: "/api/method/feedback_widget.api.su_kien.ghi_lo",
       inventoryEndpoint: "/api/method/feedback_widget.api.su_kien.kiem_ke_giao_dien",
       project: (ct.project || project),
-      showWidget: ct.show_widget === undefined ? true : !!ct.show_widget,
+      // Ai được THẤY nút: máy chủ đã suy sẵn (bật/tắt + desk + phạm vi vai trò) ở
+      // `ct.show_widget`. Không hỏi lại `settings.is_eligible` — hai nguồn cho một câu
+      // hỏi thì sớm muộn lệch nhau.
+      showWidget: ct.show_widget === undefined ? Boolean(settings.is_eligible !== false) : !!ct.show_widget,
       autoReport: !!ct.auto_report,
       collectUsage: !!ct.collect_usage,
       usageSamplePct: ct.usage_sample_pct === undefined ? 100 : ct.usage_sample_pct,

@@ -18,7 +18,7 @@ MOC = "feedback_widget:moc_error_log"        # mốc đã đọc tới đâu (fr
 
 
 def _du_an() -> str:
-    return (cai_dat().get("project") or frappe.local.site or "default")[:80]
+    return (cai_dat().get("project_name") or frappe.local.site or "default")[:80]
 
 
 def _cau_cuoi(traceback: str) -> str:

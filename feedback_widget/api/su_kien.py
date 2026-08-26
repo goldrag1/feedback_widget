@@ -4,7 +4,7 @@ Vì sao tách khỏi `Feedback Comment`: vé là thứ NGƯỜI xử lý (vài c
 thứ MÁY đếm (hàng nghìn). Trộn hai thứ vào một bảng thì hộp thư chết ngập và không ai
 đọc nữa — kể cả vé người gõ. Vé trỏ về sổ; sổ không đẻ vé (trừ luật ở `collect`).
 
-Trần và lấy mẫu nằm ở `Feedback Widget Settings`, không phải hằng số trong mã: mỗi site
+Trần và lấy mẫu nằm ở `Feedback Settings`, không phải hằng số trong mã: mỗi site
 một mức chịu đựng khác nhau, và người vận hành phải tự vặn được mà không cần deploy.
 """
 
@@ -69,7 +69,7 @@ def ghi_lo(events=None, project: str = None):
         return {"ok": False, "loi": "events phải là danh sách"}
 
     khoa_che = [k.strip().lower() for k in (ct.get("redact_keys") or "").split(",") if k.strip()]
-    du_an = (project or ct.get("project") or frappe.local.site or "default")[:80]
+    du_an = (project or ct.get("project_name") or frappe.local.site or "default")[:80]
     nguoi = frappe.session.user
     vai = ", ".join(sorted(r for r in (frappe.get_roles(nguoi) or []) if r not in ("All", "Guest")))[:500]
 
@@ -138,7 +138,7 @@ def kiem_ke_giao_dien(items=None, project: str = None):
         items = json.loads(items)
     if not isinstance(items, list):
         return {"ok": False, "loi": "items phải là danh sách"}
-    du_an = (project or ct.get("project") or frappe.local.site or "default")[:80]
+    du_an = (project or ct.get("project_name") or frappe.local.site or "default")[:80]
 
     them = 0
     for it in items[:60]:
@@ -181,7 +181,7 @@ def khai_danh_muc(items=None, project: str = None, nguon: str = ""):
         items = json.loads(items)
     if not isinstance(items, list):
         return {"ok": False, "loi": "items phải là danh sách"}
-    du_an = (project or cai_dat().get("project") or frappe.local.site or "default")[:80]
+    du_an = (project or cai_dat().get("project_name") or frappe.local.site or "default")[:80]
 
     con = set()
     for it in items:

@@ -17,20 +17,34 @@
   "project_name",
   "primary_color",
   "column_break_custom",
-  "fab_color"
+  "fab_color",
+  "section_thu",
+  "auto_report",
+  "telegram_first_seen",
+  "bridge_error_log",
+  "throttle_minutes",
+  "lap_lai_canh_bao",
+  "column_break_thu",
+  "collect_usage",
+  "usage_sample_pct",
+  "max_events_per_minute",
+  "retention_days",
+  "digest_hour",
+  "section_rieng_tu",
+  "redact_keys"
  ],
  "fields": [
   {
    "fieldname": "section_general",
    "fieldtype": "Section Break",
-   "label": "Tr\u1ea1ng th\u00e1i ho\u1ea1t \u0111\u1ed9ng"
+   "label": "Trạng thái hoạt động"
   },
   {
    "default": "1",
-   "description": "B\u1eadt ho\u1eb7c t\u1eaft to\u00e0n b\u1ed9 widget ph\u1ea3n h\u1ed3i tr\u00ean h\u1ec7 th\u1ed1ng",
+   "description": "Bật hoặc tắt toàn bộ widget phản hồi trên hệ thống",
    "fieldname": "enabled",
    "fieldtype": "Check",
-   "label": "B\u1eadt Feedback Widget"
+   "label": "Bật Feedback Widget"
   },
   {
    "fieldname": "column_break_general",
@@ -39,38 +53,38 @@
   {
    "default": "1",
    "depends_on": "eval:doc.enabled",
-   "description": "Hi\u1ec3n th\u1ecb n\u00fat ph\u1ea3n h\u1ed3i tr\u00ean giao di\u1ec7n Desk (/app)",
+   "description": "Hiển thị nút phản hồi trên giao diện Desk (/app)",
    "fieldname": "enable_on_desk",
    "fieldtype": "Check",
-   "label": "Hi\u1ec3n th\u1ecb tr\u00ean Desk"
+   "label": "Hiển thị trên Desk"
   },
   {
    "default": "1",
    "depends_on": "eval:doc.enabled",
-   "description": "Hi\u1ec3n th\u1ecb n\u00fat ph\u1ea3n h\u1ed3i tr\u00ean giao di\u1ec7n Mobile / Portal (nh\u01b0 /facility)",
+   "description": "Hiển thị nút phản hồi trên giao diện Mobile / Portal (như /facility)",
    "fieldname": "enable_on_portal",
    "fieldtype": "Check",
-   "label": "Hi\u1ec3n th\u1ecb tr\u00ean Mobile / Portal"
+   "label": "Hiển thị trên Mobile / Portal"
   },
   {
    "depends_on": "eval:doc.enabled",
    "fieldname": "section_permissions",
    "fieldtype": "Section Break",
-   "label": "Ph\u1ea1m vi hi\u1ec3n th\u1ecb theo vai tr\u00f2"
+   "label": "Phạm vi hiển thị theo vai trò"
   },
   {
    "default": "1",
-   "description": "N\u1ebfu b\u1eadt, t\u1ea5t c\u1ea3 ng\u01b0\u1eddi d\u00f9ng \u0111\u0103ng nh\u1eadp \u0111\u1ec1u th\u1ea5y widget. N\u1ebfu t\u1eaft, ch\u1ec9 nh\u1eefng vai tr\u00f2 \u0111\u01b0\u1ee3c ch\u1ecdn b\u00ean d\u01b0\u1edbi m\u1edbi th\u1ea5y.",
+   "description": "Nếu bật, tất cả người dùng đăng nhập đều thấy widget. Nếu tắt, chỉ những vai trò được chọn bên dưới mới thấy.",
    "fieldname": "allow_all_roles",
    "fieldtype": "Check",
-   "label": "Cho ph\u00e9p t\u1ea5t c\u1ea3 vai tr\u00f2 (All Roles)"
+   "label": "Cho phép tất cả vai trò (All Roles)"
   },
   {
    "depends_on": "eval:!doc.allow_all_roles",
-   "description": "Danh s\u00e1ch c\u00e1c vai tr\u00f2 (Role) \u0111\u01b0\u1ee3c ph\u00e9p th\u1ea5y v\u00e0 g\u1eedi ph\u1ea3n h\u1ed3i",
+   "description": "Danh sách các vai trò (Role) được phép thấy và gửi phản hồi",
    "fieldname": "allowed_roles",
    "fieldtype": "Table",
-   "label": "Vai tr\u00f2 \u0111\u01b0\u1ee3c ph\u00e9p",
+   "label": "Vai trò được phép",
    "options": "Feedback Role Item"
   },
   {
@@ -78,19 +92,19 @@
    "depends_on": "eval:doc.enabled",
    "fieldname": "section_customization",
    "fieldtype": "Section Break",
-   "label": "T\u00f9y bi\u1ebfn hi\u1ec3n th\u1ecb"
+   "label": "Tùy biến hiển thị"
   },
   {
-   "description": "Ti\u1ec1n t\u1ed1 / t\u00ean nh\u1eadn di\u1ec7n d\u1ef1 \u00e1n. \u0110\u1ec3 tr\u1ed1ng s\u1ebd t\u1ef1 \u0111\u1ed9ng l\u1ea5y theo t\u00ean site.",
+   "description": "Tiền tố / tên nhận diện dự án. Để trống sẽ tự động lấy theo tên site.",
    "fieldname": "project_name",
    "fieldtype": "Data",
-   "label": "T\u00ean d\u1ef1 \u00e1n (Project slug)"
+   "label": "Tên dự án (Project slug)"
   },
   {
    "default": "#1f3a5f",
    "fieldname": "primary_color",
    "fieldtype": "Data",
-   "label": "M\u00e0u ch\u1ee7 \u0111\u1ea1o (Primary Color)"
+   "label": "Màu chủ đạo (Primary Color)"
   },
   {
    "fieldname": "column_break_custom",
@@ -100,12 +114,93 @@
    "default": "#047857",
    "fieldname": "fab_color",
    "fieldtype": "Data",
-   "label": "M\u00e0u n\u00fat b\u1ea5m n\u1ed5i (FAB Color)"
+   "label": "Màu nút bấm nổi (FAB Color)"
+  },
+  {
+   "fieldname": "section_thu",
+   "fieldtype": "Section Break",
+   "label": "Thu thập tự động (sổ chặn)"
+  },
+  {
+   "fieldname": "auto_report",
+   "fieldtype": "Check",
+   "label": "Tự tạo vé khi máy chủ TỪ CHỐI hoặc màn hình LỖI",
+   "default": "1",
+   "description": "Không phụ thuộc ô 'Bật Feedback Widget': ẩn nút 💬 mà vẫn thu là chuyện bình thường."
+  },
+  {
+   "fieldname": "telegram_first_seen",
+   "fieldtype": "Check",
+   "label": "Đẩy Telegram khi chữ ký xuất hiện LẦN ĐẦU",
+   "default": "1"
+  },
+  {
+   "fieldname": "bridge_error_log",
+   "fieldtype": "Check",
+   "label": "Đưa lỗi việc nền (Error Log) vào cùng hộp thư",
+   "default": "1"
+  },
+  {
+   "fieldname": "throttle_minutes",
+   "fieldtype": "Int",
+   "label": "Bóp ga mỗi chữ ký (phút)",
+   "default": "10"
+  },
+  {
+   "fieldname": "lap_lai_canh_bao",
+   "fieldtype": "Int",
+   "label": "Số lần lặp coi là ĐANG KẸT",
+   "default": "3"
+  },
+  {
+   "fieldname": "column_break_thu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "collect_usage",
+   "fieldtype": "Check",
+   "label": "Ghi sổ hành vi dùng (mở màn, bấm nút)",
+   "default": "1"
+  },
+  {
+   "fieldname": "usage_sample_pct",
+   "fieldtype": "Int",
+   "label": "Lấy mẫu hành vi (%)",
+   "default": "100"
+  },
+  {
+   "fieldname": "max_events_per_minute",
+   "fieldtype": "Int",
+   "label": "Trần sự kiện mỗi phút / phiên",
+   "default": "120"
+  },
+  {
+   "fieldname": "retention_days",
+   "fieldtype": "Int",
+   "label": "Giữ sổ thô (ngày)",
+   "default": "90"
+  },
+  {
+   "fieldname": "digest_hour",
+   "fieldtype": "Int",
+   "label": "Giờ gửi tổng kết hằng ngày (-1 = tắt)",
+   "default": "17"
+  },
+  {
+   "fieldname": "section_rieng_tu",
+   "fieldtype": "Section Break",
+   "label": "Riêng tư"
+  },
+  {
+   "fieldname": "redact_keys",
+   "fieldtype": "Small Text",
+   "label": "Khoá cần che trong tham số",
+   "default": "password,pwd,token,secret,api_key,key,pin,otp,csrf"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-24 05:00:00.000000",
+ "modified": "2026-08-26 11:00:00.000000",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Settings",

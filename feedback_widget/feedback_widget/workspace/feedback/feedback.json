@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"hdr1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">Chỗ tắc & hành vi</span>\", \"col\": 12}}, {\"id\": \"p1\", \"type\": \"paragraph\", \"data\": {\"text\": \"Vé <b>máy</b> (source = auto) do hệ tự ghi khi máy chủ TỪ CHỐI hoặc màn hình LỖI — gom theo chữ ký nên mỗi loại sự cố chỉ một vé, có cột số lần và những ai gặp. Vé <b>người</b> vẫn là góp ý gõ tay.\", \"col\": 12}}, {\"id\": \"sc1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Blockers\", \"col\": 4}}, {\"id\": \"sc2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Screen Behaviour\", \"col\": 4}}, {\"id\": \"sc3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Unused UI\", \"col\": 4}}, {\"id\": \"hdr2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">Hộp thư & sổ</span>\", \"col\": 12}}, {\"id\": \"sc4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Feedback Comment\", \"col\": 4}}, {\"id\": \"sc5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Feedback Event\", \"col\": 4}}, {\"id\": \"sc6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Feedback Widget Settings\", \"col\": 4}}]",
+ "content": "[{\"id\": \"hdr1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">Chỗ tắc & hành vi</span>\", \"col\": 12}}, {\"id\": \"p1\", \"type\": \"paragraph\", \"data\": {\"text\": \"Vé <b>máy</b> (source = auto) do hệ tự ghi khi máy chủ TỪ CHỐI hoặc màn hình LỖI — gom theo chữ ký nên mỗi loại sự cố chỉ một vé, có cột số lần và những ai gặp. Vé <b>người</b> vẫn là góp ý gõ tay.\", \"col\": 12}}, {\"id\": \"sc1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Blockers\", \"col\": 4}}, {\"id\": \"sc2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Screen Behaviour\", \"col\": 4}}, {\"id\": \"sc3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Unused UI\", \"col\": 4}}, {\"id\": \"hdr2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">Hộp thư & sổ</span>\", \"col\": 12}}, {\"id\": \"sc4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Feedback Comment\", \"col\": 4}}, {\"id\": \"sc5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Feedback Event\", \"col\": 4}}, {\"id\": \"sc6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Feedback Settings\", \"col\": 4}}]",
  "creation": "2026-08-25 13:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -106,9 +106,9 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Feedback Widget Settings",
+   "label": "Feedback Settings",
    "link_count": 0,
-   "link_to": "Feedback Widget Settings",
+   "link_to": "Feedback Settings",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
@@ -166,8 +166,8 @@
   {
    "color": "Grey",
    "doc_view": "",
-   "label": "Feedback Widget Settings",
-   "link_to": "Feedback Widget Settings",
+   "label": "Feedback Settings",
+   "link_to": "Feedback Settings",
    "type": "DocType"
   }
  ],

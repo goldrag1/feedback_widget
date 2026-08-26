@@ -14,21 +14,16 @@ app_version = "1.1.0"
 # callbacks. Cache-bust via content hash from assets.json — no ?version= suffix.
 app_include_js = ["feedback_widget.bundle.js"]
 
-# HAI KHOÁ boot khác nhau, mỗi khoá một cửa — KHÔNG phải hai bản của một luật:
-#   `extend_bootinfo` → `boot.feedback_widget_settings`  (HIỂN THỊ: bật/tắt, vai, màu)
-#   `boot_session`    → `boot.feedback_widget`           (THU THẬP: collect_usage, throttle…)
-# Chú thích cũ ở đây từng cấm thêm `boot_session`; luật đó đúng khi hai hàm nhồi CÙNG một
-# khoá, và sai ở đây — bỏ cửa dưới là bundle rơi vào nhánh an toàn "boot rỗng ⇒ KHÔNG tự
-# thu": đo trên gương HTS 26/08 sau khi cài từ HEAD, nút góp ý hiện và vé gửi được nhưng sổ
-# sự kiện đứng im 0 dòng, không một lỗi nào. `test_boot_payload.py` khoá lại việc này bằng
-# cách đọc CHÍNH bundle: mọi khoá `ct.<x>` nó dùng đều phải có người nhồi.
-# Khi bản gộp một cửa của phiên khác lên (extend_bootinfo tự gọi payload thu thập), xoá dòng
-# `boot_session` — lúc ấy nó mới thành bản chép thứ hai.
+# MỘT cửa boot duy nhất: `extend_bootinfo` nhồi CẢ HAI khoá —
+#   `boot.feedback_widget_settings` (HIỂN THỊ: bật/tắt, vai, màu)
+#   `boot.feedback_widget`          (THU THẬP: collect_usage, throttle, sample…)
+# Bản 26/08 từng phải mở thêm cửa `boot_session` vì bản gộp còn dở; nay gộp xong thì cửa
+# ấy là bản chép thứ hai (và một hook boot ném lỗi = mọi site 500 — đã xảy ra thật vì
+# chính nó). Bỏ cửa dưới mà quên nhồi `boot.feedback_widget` thì bundle rơi vào nhánh an
+# toàn "boot rỗng ⇒ KHÔNG tự thu": sổ sự kiện đứng im 0 dòng, không một lỗi nào.
+# `tests/test_boot_payload.py` khoá lại đúng việc đó — nó đọc CHÍNH bundle, rút mọi khoá
+# `ct.<x>` và đòi boot phải có đủ.
 extend_bootinfo = "feedback_widget.api.feedback.extend_bootinfo"
-# Trỏ vào cửa CHỊU LỖI, không trỏ thẳng `cai_dat.boot_session`: cây này dùng chung (hardlink
-# cho bench chính + 4 slot) nên tên hàm có thể đang bị đổi ở một phiên khác, và một hook boot
-# ném lỗi là mọi site 500 ở boot — đã xảy ra thật 26/08 vì chính dòng này.
-boot_session = "feedback_widget.boot_thu_thap.boot_session"
 
 scheduler_events = {
     "cron": {

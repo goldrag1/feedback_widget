@@ -20,8 +20,8 @@ class TestSoSuKien(FrappeTestCase):
 		frappe.db.commit()
 
 	def _bat(self, v):
-		frappe.db.set_single_value("Feedback Widget Settings", "collect_usage", v)
-		frappe.clear_cache(doctype="Feedback Widget Settings")
+		frappe.db.set_single_value("Feedback Settings", "collect_usage", v)
+		frappe.clear_cache(doctype="Feedback Settings")
 		frappe.db.commit()
 
 	def test_che_thong_tin_nhay_cam_o_MOI_do_sau(self):

@@ -464,4 +464,14 @@ def extend_bootinfo(bootinfo):
         **settings,
         "is_eligible": is_eligible,
     }
+    # v1.6 — cài đặt THU THẬP đi cùng một cửa boot với cài đặt hiển thị. Hai cửa
+    # (`extend_bootinfo` + `boot_session`) cùng nhồi cài đặt là hai bản của một luật, và
+    # trình duyệt đọc bản nào là do thứ tự nạp quyết định.
+    try:
+        from feedback_widget.cai_dat import payload_cho_trinh_duyet
+
+        bootinfo.feedback_widget = payload_cho_trinh_duyet(user)
+    except Exception:
+        # Boot HỎNG là cả desk trắng màn. Một tính năng ghi sổ không được phép làm điều đó.
+        frappe.log_error(frappe.get_traceback(), "feedback_widget boot")
 

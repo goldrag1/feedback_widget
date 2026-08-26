@@ -174,7 +174,7 @@ lô / khác số luôn về một vé, `occurrences` đếm lần, `affected_use
 - **Danh mục nút** — widget KIỂM KÊ nút đang hiện trên màn người dùng vừa mở (không đọc
   mã nguồn: bộ đọc mã phải đoán nút nào thuộc màn nào và sai lệch âm thầm).
 
-## Cài đặt (`Feedback Widget Settings`)
+## Cài đặt (`Feedback Settings`)
 
 `show_widget` tắt = **GIẤU nút 💬 nhưng VẪN thu** — dùng khi không muốn làm phiền công
 nhân mà vẫn cần biết họ tắc ở đâu. Ngoài ra: bật/tắt tự báo, bật/tắt sổ hành vi, tỉ lệ lấy
