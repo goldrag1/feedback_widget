@@ -62,7 +62,12 @@
   }
 
   function veThe(tb, khung) {
+    // Đo trên prod 26/08: thẻ ĐẨY còn trên màn, người dùng mở lối 🔔 thì chính thông
+    // báo ấy được vẽ lần thứ hai — hai thẻ y hệt nhau chồng nhau, và đóng cái này vẫn
+    // còn cái kia. Một thông báo = một thẻ, khoá theo mã của nó.
+    if (khung.querySelector('[data-tb="' + (tb.name || "") + '"]')) return;
     var the = document.createElement("div");
+    the.setAttribute("data-tb", tb.name || "");
     css(the, {
       background: "#fff", border: "1px solid #d1d5db", borderLeft: "4px solid #047857",
       borderRadius: "10px", boxShadow: "0 6px 20px rgba(0,0,0,.14)", padding: "12px 14px",
