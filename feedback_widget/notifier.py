@@ -49,10 +49,29 @@ def _log(msg: str) -> None:
         print(f"[feedback_widget notifier] {msg}", file=sys.stderr)
 
 
+def _tu_site_config() -> Tuple[Optional[str], Optional[str]]:
+    """Khoá RIÊNG TỪNG SITE, đọc từ site_config.json.
+
+    Một bench chở nhiều site (ducan + thanhcong dùng chung `~/.claude/channels/
+    telegram/`), nên cấu hình theo THƯ MỤC NHÀ gộp góp ý của mọi khách vào một
+    hộp thoại. Hai khoá dưới đây cho mỗi site một nơi nhận riêng; thiếu thì rơi
+    về cấu hình chung như cũ.
+    """
+    try:
+        import frappe  # type: ignore
+        conf = frappe.get_conf()
+    except Exception:
+        return None, None
+    tok = conf.get("feedback_telegram_bot_token") or None
+    chat = conf.get("feedback_telegram_chat_id")
+    return tok, (str(chat) if chat not in (None, "") else None)
+
+
 def _load_config() -> Tuple[Optional[str], Optional[str]]:
     """Returns (bot_token, chat_id) or (None, None) if config missing."""
     token: Optional[str] = None
     chat_id: Optional[str] = None
+    s_token, s_chat = _tu_site_config()
     if ENV_PATH.exists():
         for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -67,7 +86,7 @@ def _load_config() -> Tuple[Optional[str], Optional[str]]:
                 chat_id = str(allow[0])
         except json.JSONDecodeError:
             pass
-    return token, chat_id
+    return (s_token or token), (s_chat or chat_id)
 
 
 def is_configured() -> bool:
