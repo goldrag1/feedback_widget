@@ -27,6 +27,7 @@ MAC_DINH = {
     # ảnh 8 (4%), phân loại 3 (2%), mức độ 1 (0,6%). Mặc định suy TỪ SỐ ĐO đó.
     "hien_tag": 0,
     "cho_dinh_anh": 1,
+    "giay_tu_dong_dong": 20,
     # thu thập tự động (bản 25/08)
     "auto_report": 1,
     "telegram_first_seen": 1,
@@ -100,6 +101,7 @@ def payload_cho_trinh_duyet(user: str = None) -> dict:
         "fab_color": ct.get("fab_color") or "#047857",
         "hien_tag": int(ct.get("hien_tag") or 0),
         "cho_dinh_anh": int(ct.get("cho_dinh_anh") or 0),
+        "giay_tu_dong_dong": int(ct.get("giay_tu_dong_dong") or 0),
     }
 
 

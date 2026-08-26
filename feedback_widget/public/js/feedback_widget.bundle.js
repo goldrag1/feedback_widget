@@ -181,27 +181,48 @@ import "./feedback_widget_core.js";
 
   // ---------- v1.7: lối vào thông báo tính năng ----------
   function dangKyLoiThongBao() {
-    var chuaXem = 0, daHoi = false;
-    // Phần vẽ thẻ và endpoint đi CÙNG một bản cập nhật, nên sự có mặt của hàm vẽ là
-    // câu trả lời cho "endpoint đã lên chưa". Hỏi khi chưa lên thì mỗi lần tải trang
-    // là một dòng 417 đỏ + nguyên traceback trong console của MỌI màn — đo được ở
-    // vòng kiểm 26/08, và console đỏ làm người sau bỏ qua cả lỗi thật.
+    // `sanSang` = MÁY CHỦ đã trả lời được, KHÔNG phải "mã vẽ thẻ đã có": hai thứ lên
+    // theo hai nhịp khác nhau (phần vẽ nằm trong bundle, endpoint đi theo migrate).
+    // Hỏi máy chủ, tối đa 2 lần rồi rút — một tính năng phụ không được quyền đổ
+    // traceback 417 vào console của MỌI màn, console đỏ làm người sau bỏ qua cả lỗi thật.
+    var chuaXem = 0, daHoi = false, sanSang = false, daDay = {}, soLanLoi = 0;
     function coVeThe() {
       return !!(window.FeedbackNotices && window.FeedbackNotices.show);
     }
     function dem() {
-      if (!coVeThe()) return;
+      if (!coVeThe() || soLanLoi >= 2) return;
       daHoi = true;
       window.frappe.call({
         method: "feedback_widget.api.thong_bao.cua_toi",
-        error: function () {},
+        error: function () { soLanLoi += 1; sanSang = false; },
         callback: function (r) {
           var ds = (r && r.message) || [];
+          sanSang = true;
           chuaXem = ds.length;
           window.__fbw_thong_bao__ = ds;
+          dayCaiRieng(ds);
         },
       });
     }
+    /**
+     * ĐẨY thẳng thành thẻ, nhưng CHỈ với thông báo gửi riêng cho một người: đó là
+     * người đã báo vé, và cả lý do tính năng này tồn tại là để họ biết việc mình báo
+     * đã được sửa (đo prod 26/08: 74 vé Resolved, 0 lượt báo ngược). Thông báo gửi cả
+     * nhà chỉ hiện chấm đỏ trên nút — đẩy mọi thứ như nhau thì cái loa sẽ bị tắt, và
+     * lúc đó cái ĐÁNG đẩy cũng chết theo. Mỗi thông báo đẩy đúng một lần mỗi lần tải trang.
+     */
+    function dayCaiRieng(ds) {
+      var rieng = (ds || []).filter(function (tb) {
+        return tb.pham_vi === "Một người" && !daDay[tb.name];
+      });
+      if (!rieng.length) return;
+      // Tối đa 2 thẻ một lúc: thẻ đứng cho tới khi người dùng đóng (hoặc hết trần giây
+      // khai ở Cài đặt), nên 5 cái xếp chồng sẽ che mất màn hình họ đang làm việc.
+      rieng = rieng.slice(0, 2);
+      rieng.forEach(function (tb) { daDay[tb.name] = 1; });
+      window.FeedbackNotices.show(rieng);
+    }
+
     window.FeedbackWidget.registerAction({
       id: "thong-bao",
       icon: "🔔",
@@ -210,9 +231,8 @@ import "./feedback_widget_core.js";
       // `enabled` được gọi mỗi lần mở menu ⇒ cũng là nhịp hỏi số chưa xem lần đầu,
       // sau khi bản cập nhật lên mà không cần nạp lại trang.
       enabled: function () {
-        if (!coVeThe()) return false;
         if (!daHoi) dem();
-        return true;
+        return sanSang;      // chỉ hiện khi máy chủ ĐÃ trả lời được
       },
       badge: function () { return chuaXem || 0; },
       onClick: function () {

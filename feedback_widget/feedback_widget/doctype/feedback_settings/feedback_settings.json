@@ -136,6 +136,13 @@
    "label": "Cho đính ảnh (nút 📎)"
   },
   {
+   "default": "20",
+   "description": "0 = đứng cho tới khi người dùng tự đóng. Tự đóng KHÔNG tính là đã đọc — lần sau vẫn hiện lại.",
+   "fieldname": "giay_tu_dong_dong",
+   "fieldtype": "Int",
+   "label": "Thẻ thông báo tự đóng sau (giây)"
+  },
+  {
    "fieldname": "section_thu",
    "fieldtype": "Section Break",
    "label": "Thu thập tự động (sổ chặn)"
@@ -219,7 +226,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-26 17:08:31.696773",
+ "modified": "2026-08-26 17:57:43.868637",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Settings",
