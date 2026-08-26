@@ -25,7 +25,10 @@ app_include_js = ["feedback_widget.bundle.js"]
 # Khi bản gộp một cửa của phiên khác lên (extend_bootinfo tự gọi payload thu thập), xoá dòng
 # `boot_session` — lúc ấy nó mới thành bản chép thứ hai.
 extend_bootinfo = "feedback_widget.api.feedback.extend_bootinfo"
-boot_session = "feedback_widget.cai_dat.boot_session"
+# Trỏ vào cửa CHỊU LỖI, không trỏ thẳng `cai_dat.boot_session`: cây này dùng chung (hardlink
+# cho bench chính + 4 slot) nên tên hàm có thể đang bị đổi ở một phiên khác, và một hook boot
+# ném lỗi là mọi site 500 ở boot — đã xảy ra thật 26/08 vì chính dòng này.
+boot_session = "feedback_widget.boot_thu_thap.boot_session"
 
 scheduler_events = {
     "cron": {
