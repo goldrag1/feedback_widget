@@ -117,7 +117,13 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
 
     // Project slug — allow override from Feedback Settings, fallback to site-derived slug
     const customProject = (settings.project_name || "").trim();
-    const project = customProject || ("tamdinh-" + siteSlug()).replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
+    // KHÔNG ghim tiền tố thương hiệu vào đây. Nhánh dự phòng này từng là "dcnet-" rồi
+    // thành "tamdinh-" tuỳ ai cài app sau cùng, nên cùng MỘT site sinh ra nhiều tên dự án
+    // khác nhau theo thời gian: đo 26/08 trên ducan có ba giá trị cùng tồn tại —
+    // `dcnet-ducan…` (183 vé), `ducan…` (22), `tamdinh-ducan…` (1, sinh tối đó). Sổ gom
+    // theo dự án nên ba tên = ba hộp thư, và tin nhắn Telegram gọi khách này bằng tên
+    // khách khác. Tên site đã đủ nhận dạng; muốn khác thì khai `project_name` trong Cài đặt.
+    const project = customProject || siteSlug().replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
 
     const userId = (window.frappe.session && window.frappe.session.user) || "";
 
