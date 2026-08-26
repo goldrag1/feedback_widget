@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:TB-{YY}{MM}-{#####}",
+ "creation": "2026-08-26 17:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "tieu_de", "noi_dung", "duong_dan", "section_pham_vi", "pham_vi", "cac_vai", "cac_nguoi",
+  "column_break_scope", "project", "nguon_ve", "cam_on_ai", "section_hieu_luc", "bat_dau",
+  "het_han", "dang_bat"
+ ],
+ "fields": [
+  {"fieldname": "tieu_de", "fieldtype": "Data", "label": "Tiêu đề", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "noi_dung", "fieldtype": "Small Text", "label": "Nội dung (2-3 dòng, nói bằng việc của người nhận)", "reqd": 1},
+  {"fieldname": "duong_dan", "fieldtype": "Data", "label": "Đường dẫn mở đúng chỗ (vd #/viec-cua-toi)", "description": "Không có chỗ để bấm thì cân nhắc đừng gửi."},
+  {"fieldname": "section_pham_vi", "fieldtype": "Section Break", "label": "Gửi cho ai"},
+  {"fieldname": "pham_vi", "fieldtype": "Select", "label": "Phạm vi", "options": "Một người\nNhóm vai\nTất cả", "default": "Một người", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "cac_vai", "fieldtype": "Table", "label": "Vai được nhận", "options": "Feedback Role Item", "depends_on": "eval:doc.pham_vi=='Nhóm vai'"},
+  {"fieldname": "cac_nguoi", "fieldtype": "Table", "label": "Người được nhận", "options": "Feedback Notice User", "depends_on": "eval:doc.pham_vi=='Một người'"},
+  {"fieldname": "column_break_scope", "fieldtype": "Column Break"},
+  {"fieldname": "project", "fieldtype": "Data", "label": "Dự án / site", "description": "Trống = mọi dự án."},
+  {"fieldname": "nguon_ve", "fieldtype": "Link", "label": "Sinh ra từ vé", "options": "Feedback Comment"},
+  {"fieldname": "cam_on_ai", "fieldtype": "Data", "label": "Cảm ơn ai (tên người báo)", "description": "Bắt buộc khi có vé nguồn — lời cảm ơn là thứ giữ cho người dùng còn gõ vé."},
+  {"fieldname": "section_hieu_luc", "fieldtype": "Section Break", "label": "Hiệu lực"},
+  {"fieldname": "bat_dau", "fieldtype": "Datetime", "label": "Bắt đầu hiện", "default": "Now"},
+  {"fieldname": "het_han", "fieldtype": "Datetime", "label": "Hết hạn (trống = 14 ngày)"},
+  {"fieldname": "dang_bat", "fieldtype": "Check", "label": "Đang bật", "default": "1", "in_list_view": 1}
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-08-26 17:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Notice",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 0, "print": 0, "read": 1, "report": 1, "role": "System Manager", "share": 0, "write": 1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

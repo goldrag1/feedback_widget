@@ -1,0 +1,28 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-08-26 17:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": ["thong_bao", "user", "xem_luc", "da_bam"],
+ "fields": [
+  {"fieldname": "thong_bao", "fieldtype": "Link", "label": "Thông báo", "options": "Feedback Notice", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "user", "fieldtype": "Link", "label": "Người xem", "options": "User", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "xem_luc", "fieldtype": "Datetime", "label": "Xem lúc"},
+  {"fieldname": "da_bam", "fieldtype": "Check", "label": "Đã bấm vào đường dẫn", "in_list_view": 1}
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-08-26 17:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Notice Seen",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 0, "print": 0, "read": 1, "report": 1, "role": "System Manager", "share": 0, "write": 1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}
