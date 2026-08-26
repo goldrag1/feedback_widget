@@ -25,7 +25,7 @@ def _cua_toi(user: str) -> list:
 	# kiểu ta hay đi tìm nhầm chỗ. Truyền mốc từ Python để hai bên cùng độ chính xác.
 	bay_gio = frappe.utils.now_datetime()
 	return frappe.db.sql(f"""
-		SELECT n.name, n.tieu_de, n.noi_dung, n.duong_dan, n.cam_on_ai, n.nguon_ve, n.creation
+		SELECT n.name, n.tieu_de, n.noi_dung, n.duong_dan, n.cam_on_ai, n.nguon_ve, n.creation, n.pham_vi
 		  FROM `tabFeedback Notice` n
 		 WHERE n.dang_bat = 1
 		   AND (n.bat_dau IS NULL OR n.bat_dau <= %s)

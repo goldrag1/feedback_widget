@@ -5,15 +5,29 @@
  * đúng cái tên mà lối vào "🔔 Thông báo tính năng mới" chờ.
  *
  * Ba luật của cơ chế, cài đặt ngay trong hàm này:
- *  1. CHỈ đánh dấu ĐÃ XEM khi người dùng BẤM (Xem thử / đóng) — thẻ tự ẩn sau vài giây
- *     KHÔNG tính là đã xem, vì thông báo biến mất chỉ vì người ta đang bận thì bằng không
- *     có. Lần mở sau nó vẫn còn.
+ *  1. Thẻ ĐỨNG cho tới khi người dùng tự đóng (chủ đầu tư 26/08: "tự đóng sau vài giây
+ *     thì không có gì bảo đảm người ta đã đọc"). Có TRẦN thời gian khai ở Cài đặt
+ *     (`giay_tu_dong_dong`, mặc định 20 giây, 0 = đứng vô hạn) để một thẻ bị bỏ quên
+ *     không che màn mãi. Hết trần vẫn KHÔNG tính là đã xem — lần mở sau nó còn nguyên.
  *  2. `da_bam = 1` chỉ khi bấm "Xem thử" — chính con số đó trả lời "gửi có trúng không".
  *  3. Có ĐƯỜNG DẪN thì phải bấm được; không có thì không vẽ nút, đừng mời vào ngõ cụt.
  */
 (function (global) {
-  var TU_AN_MS = 8000;
+  var TRAN_MAC_DINH_GIAY = 20;
   var TOI_DA = 3;
+
+  /** Trần thời gian đứng của thẻ, giây. 0 = không tự ẩn. Đọc từ boot (Cài đặt); site
+   *  chưa migrate thì KHÔNG có khoá này — vẫn phải có trần, nếu không một thẻ bị bỏ quên
+   *  che góc màn cả buổi. */
+  function tranGiay() {
+    try {
+      var ct = (global.frappe && global.frappe.boot && global.frappe.boot.feedback_widget) || {};
+      var v = ct.giay_tu_dong_dong;
+      return v === undefined || v === null || v === "" ? TRAN_MAC_DINH_GIAY : Number(v) || 0;
+    } catch (_e) {
+      return TRAN_MAC_DINH_GIAY;
+    }
+  }
 
   function css(el, o) { for (var k in o) el.style[k] = o[k]; return el; }
 
@@ -33,7 +47,12 @@
     if (el) return el;
     el = document.createElement("div");
     el.id = id;
-    css(el, {
+    var hep = false;
+    try { hep = global.matchMedia && global.matchMedia("(max-width: 480px)").matches; } catch (_e) {}
+    css(el, hep ? {
+      position: "fixed", left: "12px", right: "12px", bottom: "76px", zIndex: "99998",
+      display: "flex", flexDirection: "column", gap: "10px", maxWidth: "none",
+    } : {
       position: "fixed", right: "18px", bottom: "92px", zIndex: "99998",
       display: "flex", flexDirection: "column", gap: "10px",
       maxWidth: "min(360px, calc(100vw - 36px))",
@@ -112,8 +131,13 @@
       if (the.parentNode) the.parentNode.removeChild(the);
       if (!khung.childNodes.length && khung.parentNode) khung.parentNode.removeChild(khung);
     }
-    // Tự ẩn: KHÔNG gọi `da_xem` — xem mục 1 ở đầu tệp.
-    hen = setTimeout(function () { if (the.parentNode) the.parentNode.removeChild(the); }, TU_AN_MS);
+    // Hết TRẦN thì ẩn thẻ nhưng KHÔNG gọi `da_xem` — xem mục 1 ở đầu tệp. Trần 0 =
+    // đứng tới khi người dùng bấm.
+    var tran = tranGiay();
+    if (tran > 0) {
+      hen = setTimeout(function () { if (the.parentNode) the.parentNode.removeChild(the); }, tran * 1000);
+    }
+    // Rê chuột vào = đang đọc: dừng hẳn đồng hồ, đừng giật mất thứ người ta đang đọc dở.
     the.onmouseenter = function () { if (hen) { clearTimeout(hen); hen = null; } };
 
     khung.appendChild(the);
