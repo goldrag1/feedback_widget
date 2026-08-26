@@ -6,3 +6,4 @@
 # thẳng ("Patch type PatchType.pre_model_sync not found"). Cả hai đều làm `bench migrate`
 # dừng giữa chừng — đã cắn cả hai trên prod 25/08.
 feedback_widget.patches.v1_gieo_cai_dat_mac_dinh
+feedback_widget.patches.v2_dong_bo_chu_ky_ve_va_so

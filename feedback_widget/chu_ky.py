@@ -50,12 +50,21 @@ def chuan_hoa(message: str) -> str:
     return s.strip().lower()[:400]
 
 
-def chu_ky(message: str, endpoint: str = "", kind: str = "") -> str:
+def chu_ky(message: str, endpoint: str = "", kind: str = None) -> str:
     """Chữ ký 12 ký tự cho một LOẠI sự cố.
 
     Có dấu hiệu máy-đọc thì lấy nó làm gốc (kèm endpoint để phân biệt hai chỗ dùng
     chung một dấu hiệu); không có thì băm câu đã chuẩn hoá.
+
+    `kind` CỐ Ý không vào băm — giữ trong chữ ký hàm chỉ để nơi gọi không phải sửa.
+    VÌ SAO: hai nơi gọi khai `kind` khác nhau cho CÙNG một sự cố — vé băm kèm
+    `source="auto"`, sổ băm kèm `kind="chan"/"loi"` — nên vé và sổ không bao giờ ra
+    cùng khoá. Đo prod 26/08: 33 vé, 16 dòng sổ, **0 chữ ký dùng chung**, tức mục
+    "Hồi quy" (vé đã đóng mà lỗi quay lại) nối `Comment.signature = Event.signature`
+    về cấu trúc là LUÔN RỖNG, và vòng "đóng vé rồi đo lại chữ ký" so hai thứ khác nhau.
+    Đánh đổi đã cân: `chan` và `loi` cùng câu + cùng endpoint nay gom một khoá — vẫn
+    tách được khi cần vì cột `kind` còn nguyên; bảng xếp hạng đọc cột ấy, không đọc khoá.
     """
     mk = dau_hieu(message)
-    goc = f"{kind}|{endpoint}|{mk}" if mk else f"{kind}|{endpoint}|{chuan_hoa(message)}"
+    goc = f"{endpoint}|{mk}" if mk else f"{endpoint}|{chuan_hoa(message)}"
     return hashlib.sha1(goc.encode("utf-8")).hexdigest()[:12]

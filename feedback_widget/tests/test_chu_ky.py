@@ -44,3 +44,17 @@ class TestChuKy(unittest.TestCase):
 		xong = chuan_hoa(a)
 		for the in ("strong", "href", "</a>"):
 			self.assertNotIn(the, xong)
+
+	def test_VE_va_SO_cua_cung_su_co_phai_ra_CUNG_khoa(self):
+		"""Nếu khác khoá thì mục "Hồi quy" không bao giờ khớp và vòng khép kín gãy."""
+		cau = "[THIEUCAN] Chưa cân đủ đầu ra"
+		ep = "viec_nen hoan_thanh_cong_doan"
+		self.assertEqual(chu_ky(cau, ep, "auto"), chu_ky(cau, ep, "chan"))
+		self.assertEqual(chu_ky(cau, ep, "chan"), chu_ky(cau, ep, "loi"))
+		self.assertEqual(chu_ky(cau, ep), chu_ky(cau, ep, "auto"))
+
+	def test_gom_theo_khoa_van_TACH_dung_hai_su_co_khac_nhau(self):
+		"""Bỏ `kind` khỏi băm không được làm khoá tù mù: câu khác / endpoint khác vẫn tách."""
+		self.assertNotEqual(chu_ky("[THIEUCAN] a", "ep1"), chu_ky("[XINDUYET] a", "ep1"))
+		self.assertNotEqual(chu_ky("[THIEUCAN] a", "ep1"), chu_ky("[THIEUCAN] a", "ep2"))
+		self.assertNotEqual(chu_ky("Lỗi máy chủ", "ep1"), chu_ky("Không tìm thấy", "ep1"))
