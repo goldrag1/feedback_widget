@@ -431,17 +431,28 @@ def get_settings() -> dict:
     try:
         if not frappe.db or not frappe.db.exists("DocType", "Feedback Settings"):
             return _default_settings()
+        # Giá trị HIỆU LỰC hỏi `cai_dat()`, KHÔNG đọc thẳng doc: với Single, `default`
+        # khai trong DocType JSON không nằm trong `tabSingles` cho tới khi ai đó lưu một
+        # lần, nên `doc.enable_on_desk` trả 0 ở site mới cài ⇒ `is_eligible` False ⇒
+        # widget không gắn ⇒ vừa mất nút vừa KHÔNG thu gì, không một dòng lỗi. Đo trên
+        # gương HTS 26/08 sau lượt gộp: đúng hai khoá `enable_on_desk`/`allow_all_roles`
+        # vắng mặt. `cai_dat()` đã có sẵn tầng mặc định (`MAC_DINH`) nên hỏi nó là hết
+        # cả lớp lỗi này, kể cả cho khoá thêm về sau. Bảng con vẫn phải đọc từ doc.
+        from feedback_widget.cai_dat import cai_dat
+
+        ct = cai_dat()
         doc = frappe.get_cached_doc("Feedback Settings")
-        roles = [r.role for r in doc.allowed_roles] if (not doc.allow_all_roles and doc.get("allowed_roles")) else []
+        cho_tat_ca = bool(int(ct.get("allow_all_roles") or 0))
+        roles = [r.role for r in (doc.get("allowed_roles") or [])] if not cho_tat_ca else []
         return {
-            "enabled": bool(doc.enabled),
-            "enable_on_desk": bool(doc.enable_on_desk),
-            "enable_on_portal": bool(doc.enable_on_portal),
-            "allow_all_roles": bool(doc.allow_all_roles),
+            "enabled": bool(int(ct.get("enabled") or 0)),
+            "enable_on_desk": bool(int(ct.get("enable_on_desk") or 0)),
+            "enable_on_portal": bool(int(ct.get("enable_on_portal") or 0)),
+            "allow_all_roles": cho_tat_ca,
             "allowed_roles": roles,
-            "project_name": (doc.project_name or "").strip(),
-            "primary_color": doc.primary_color or "#1f3a5f",
-            "fab_color": doc.fab_color or "#047857",
+            "project_name": (ct.get("project_name") or "").strip(),
+            "primary_color": ct.get("primary_color") or "#1f3a5f",
+            "fab_color": ct.get("fab_color") or "#047857",
         }
     except Exception:
         return _default_settings()

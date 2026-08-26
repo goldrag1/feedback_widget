@@ -95,3 +95,28 @@ def payload_cho_trinh_duyet(user: str = None) -> dict:
         "primary_color": ct.get("primary_color") or "#1f3a5f",
         "fab_color": ct.get("fab_color") or "#047857",
     }
+
+
+def gieo_mac_dinh() -> list:
+    """Ghi vào `tabSingles` những khoá CHƯA ai khai, và trả về danh sách đã gieo.
+
+    VÌ SAO CẦN: với Single, `default` khai trong DocType JSON KHÔNG được áp khi thiếu
+    dòng — `frappe.get_single()` trả 0/None. Đo trên prod 26/08 sau lượt gộp: màn Cài đặt
+    hiện `enable_on_desk = 0`, `enable_on_portal = 0`, `allow_all_roles = 0` trong khi
+    `cai_dat()` (thứ hệ THẬT SỰ dùng) trả 1/1/1. Giao diện nói ngược với hành vi, và cú
+    Save đầu tiên của người vận hành sẽ GHI CHẾT mấy con số 0 ấy: widget biến mất khỏi
+    desk của tất cả mọi người, không một dòng lỗi.
+
+    KHÔNG đè khoá đã khai — kể cả `enabled = 0` mà ai đó cố ý tắt.
+    """
+    doc = frappe.get_single(DOCTYPE)
+    da_khai = {r[0] for r in frappe.db.sql(
+        """SELECT field FROM `tabSingles` WHERE doctype = %s""", DOCTYPE)}
+    thieu = [k for k in MAC_DINH if k not in da_khai]
+    for k in thieu:
+        doc.set(k, MAC_DINH[k])
+    if thieu:
+        doc.flags.ignore_permissions = True
+        doc.save()
+        frappe.db.commit()
+    return thieu

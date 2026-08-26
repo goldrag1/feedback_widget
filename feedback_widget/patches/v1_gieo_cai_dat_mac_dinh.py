@@ -10,18 +10,8 @@ vì patch này đã có trong Patch Log của site đang chạy nên sửa nó l
 bao giờ chạy lại.
 """
 
-import frappe
-
-from feedback_widget.cai_dat import DOCTYPE, MAC_DINH
+from feedback_widget.cai_dat import gieo_mac_dinh
 
 
 def execute():
-    doc = frappe.get_single(DOCTYPE)
-    da_khai = {r[0] for r in frappe.db.sql(
-        """SELECT field FROM `tabSingles` WHERE doctype = %s""", DOCTYPE)}
-    for k, v in MAC_DINH.items():
-        if k not in da_khai:
-            doc.set(k, v)
-    doc.flags.ignore_permissions = True
-    doc.save()
-    frappe.db.commit()
+    gieo_mac_dinh()

@@ -8,3 +8,4 @@
 feedback_widget.patches.v1_gieo_cai_dat_mac_dinh
 feedback_widget.patches.v2_dong_bo_chu_ky_ve_va_so
 feedback_widget.patches.v3_gop_cai_dat_ve_mot_bang
+feedback_widget.patches.v4_gieo_lai_mac_dinh_sau_gop
