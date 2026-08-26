@@ -7,6 +7,7 @@
  * teaches it about the current Frappe route, doctype/docname, user, and CSRF.
  */
 import "./feedback_widget_core.js";
+import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối vào 🔔
 
 (function () {
   if (window.__FBW_FRAPPE_MOUNTED__) return;
