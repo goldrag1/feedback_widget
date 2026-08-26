@@ -25,6 +25,14 @@ app_include_js = ["feedback_widget.bundle.js"]
 # `ct.<x>` và đòi boot phải có đủ.
 extend_bootinfo = "feedback_widget.api.feedback.extend_bootinfo"
 
+# `gieo_mac_dinh()` viết ra để chống đúng một bẫy: với Single, `default` khai trong DocType
+# JSON KHÔNG được áp khi thiếu dòng trong `tabSingles`, nên màn Cài đặt hiện 0 trong khi mã
+# đang chạy giá trị mặc định thật — và cú Save đầu tiên của người vận hành GHI CHẾT số 0 đó.
+# Nó vẫn nằm đó mà KHÔNG AI GỌI: đo trên prod 26/08 sau hai lượt migrate, cả ba khoá mới
+# (`hien_tag`, `cho_dinh_anh`, `giay_tu_dong_dong`) vẫn trống, phải gieo bằng tay. Hàm chống
+# bẫy mà không được nối dây thì bẫy vẫn nguyên.
+after_migrate = "feedback_widget.cai_dat.gieo_mac_dinh"
+
 scheduler_events = {
     "cron": {
         # 15 phút/lần: đủ nhanh để người trực biết trong ca, đủ thưa để không phải
