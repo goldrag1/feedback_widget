@@ -1778,16 +1778,27 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     _flushEvents(dungBeacon) {
       if (!this._evQueue.length || !this.cfg.eventEndpoint) return;
       const lo = this._evQueue.splice(0, 100);
-      const body = JSON.stringify({ events: lo, project: this.cfg.project });
+      const goi = { events: lo, project: this.cfg.project };
       // Rời trang thì `fetch` bị huỷ giữa chừng — `sendBeacon` là đường DUY NHẤT còn
       // gửi được, và đúng lúc đó mới là lúc sổ quý nhất (người ta bỏ đi vì tắc).
       if (dungBeacon && navigator.sendBeacon) {
+        // `sendBeacon` KHÔNG đặt được header, nên không mang theo X-Frappe-CSRF-Token
+        // và máy chủ trả 400 CSRFTokenError — đo trên prod 26/08: 91/616 lượt (15%)
+        // rơi hết, đúng những sự kiện cuối cùng của mỗi màn. Frappe chấp nhận
+        // `csrf_token` nằm trong THÂN yêu cầu (`auth.validate_csrf_token` đọc
+        // `form_dict.pop("csrf_token")`), nên gửi kèm ở đó. Chỉ gắn cho đường beacon:
+        // đường `fetch` đã có header, thêm khoá lạ vào thân là chờ ngày Frappe đổi ý.
         try {
-          const ok = navigator.sendBeacon(this.cfg.eventEndpoint, new Blob([body], { type: 'application/json' }));
+          const goiBeacon = Object.assign({}, goi);
+          const dau = (typeof this.cfg.fetchHeaders === 'function' ? this.cfg.fetchHeaders() : null) || {};
+          const ma = dau['X-Frappe-CSRF-Token'] || dau['x-frappe-csrf-token'] || '';
+          if (ma) goiBeacon.csrf_token = ma;
+          const ok = navigator.sendBeacon(this.cfg.eventEndpoint,
+            new Blob([JSON.stringify(goiBeacon)], { type: 'application/json' }));
           if (ok) return;
         } catch (_e) { /* rơi xuống fetch */ }
       }
-      this._postJSON(this.cfg.eventEndpoint, JSON.parse(body), lo);
+      this._postJSON(this.cfg.eventEndpoint, goi, lo);
     }
 
     _postJSON(url, payload, luuLaiNeuHong) {
