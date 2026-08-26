@@ -23,6 +23,10 @@ MAC_DINH = {
     "project_name": "",
     "primary_color": "#1f3a5f",
     "fab_color": "#047857",
+    # khung góp ý (bản 26/08) — đo trên prod 164 vé do người bấm: ghim 139 (84%),
+    # ảnh 8 (4%), phân loại 3 (2%), mức độ 1 (0,6%). Mặc định suy TỪ SỐ ĐO đó.
+    "hien_tag": 0,
+    "cho_dinh_anh": 1,
     # thu thập tự động (bản 25/08)
     "auto_report": 1,
     "telegram_first_seen": 1,
@@ -94,6 +98,8 @@ def payload_cho_trinh_duyet(user: str = None) -> dict:
         "project": ct.get("project_name") or "",
         "primary_color": ct.get("primary_color") or "#1f3a5f",
         "fab_color": ct.get("fab_color") or "#047857",
+        "hien_tag": int(ct.get("hien_tag") or 0),
+        "cho_dinh_anh": int(ct.get("cho_dinh_anh") or 0),
     }
 
 

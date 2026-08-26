@@ -129,7 +129,8 @@
 
   const COPY = {
     vi: {
-      fab_title: 'Góp ý cho màn này',
+      fab_title: 'Trợ giúp · góp ý',
+      menu_feedback: 'Báo lỗi · góp ý',
       sheet_eyebrow: 'Góp ý cho màn này',
       sheet_close: 'Đóng',
       empty_emoji: '💭',
@@ -169,7 +170,8 @@
       status_note_label: 'Lời nhắn',
     },
     en: {
-      fab_title: 'Leave feedback on this screen',
+      fab_title: 'Help · feedback',
+      menu_feedback: 'Report a problem',
       sheet_eyebrow: 'Feedback for this screen',
       sheet_close: 'Close',
       empty_emoji: '💭',
@@ -228,6 +230,53 @@
   -webkit-user-select: none;
 }
 .fbw-fab:active { transform: scale(0.94); }
+
+/* ---- v1.7: launcher menu — MỘT nút, nhiều lối ----
+   Trước bản này mỗi tính năng dựng một nút nổi riêng, và trên prod có hai nút
+   CÙNG biểu tượng 💬 xếp chồng nhau: người dùng không có cách nào đoán nút nào
+   đi đâu. Nút vẫn là một; các app khác ĐĂNG KÝ lối vào của mình. */
+.fbw-menu {
+  position: fixed;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  min-width: 210px;
+  background: white;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  z-index: 2147483601;
+  font-family: inherit;
+}
+.fbw-menu.fbw-open { display: flex; }
+.fbw-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border: 0; border-radius: 8px;
+  background: transparent;
+  font-size: 14px; color: #0f172a; text-align: left;
+  cursor: pointer; width: 100%;
+}
+.fbw-menu-item:hover { background: #f1f5f9; }
+.fbw-menu-icon { font-size: 18px; line-height: 1; }
+.fbw-menu-label { flex: 1; }
+.fbw-moi {
+  display: flex; align-items: center; gap: 8px;
+  margin: 6px 0 0; padding: 8px 10px;
+  background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;
+  font-size: 13px; color: #0c4a6e;
+}
+.fbw-moi span { flex: 1; }
+.fbw-moi-nut {
+  border: 0; border-radius: 6px; padding: 5px 10px;
+  background: #0369a1; color: white; font-size: 13px; cursor: pointer;
+}
+.fbw-menu-badge {
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: #dc2626; color: white;
+  font-size: 11px; line-height: 18px; text-align: center;
+}
 .fbw-fab.fbw-dragging { cursor: grabbing; transition: none; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18); }
 .fbw-fab[data-pos="bottom-right"] { right: 14px; bottom: 14px; }
 .fbw-fab[data-pos="bottom-left"]  { left: 14px;  bottom: 14px; }
@@ -684,6 +733,10 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this._consoleErrors = [];
       this._pickerActive = false;
       this._pickerCleanup = null;
+      // v1.7 — lối vào do app khác đăng ký. Nhận cả những lối đã xếp hàng TRƯỚC khi
+      // widget gắn: thứ tự nạp bundle giữa hai app không có gì bảo đảm.
+      this._actions = [];
+      (global.__fbw_actions__ || []).forEach(a => this.themLoiVao(a));
     }
 
     _loadTags() {
@@ -778,6 +831,113 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       this._restoreFabPosition(fab);
     }
 
+    // ---------- v1.7: launcher (một nút, nhiều lối) ----------
+    // App khác gọi `FeedbackWidget.registerAction(...)` để thêm lối vào. Chỉ có
+    // đúng một lối (góp ý) thì bấm nút là mở thẳng khung — không bắt ai bấm hai lần
+    // để tới nơi duy nhất có thể tới.
+    _cacLoi() {
+      const goc = {
+        id: 'gop-y',
+        icon: '📝',
+        label: this.copy.menu_feedback || 'Báo lỗi · góp ý',
+        onClick: () => this.toggle(true),
+        order: 10,
+      };
+      const song = (a) => {
+        // `enabled` là hàm vì điều kiện đổi theo thời gian (bản cập nhật lên sau khi
+        // widget đã gắn). Lối vào không dùng được thì KHÔNG hiện — mời người dùng bấm
+        // vào một thứ không mở ra gì còn tệ hơn là không có nút.
+        try { return typeof a.enabled === 'function' ? !!a.enabled() : true; }
+        catch (_e) { return false; }
+      };
+      return [goc].concat((this._actions || []).filter(song))
+        .sort((a, b) => (a.order || 50) - (b.order || 50));
+    }
+
+    _onFabClick() {
+      const loi = this._cacLoi();
+      if (loi.length <= 1) { this.toggle(); return; }
+      if (this.open) { this.toggle(false); return; }
+      this._menuMo() ? this._dongMenu() : this._moMenu(loi);
+    }
+
+    _menuMo() {
+      return !!(this.els.menu && this.els.menu.classList.contains('fbw-open'));
+    }
+
+    _moMenu(loi) {
+      const menu = this.els.menu || this._dungMenu();
+      menu.innerHTML = '';
+      loi.forEach(a => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'fbw-menu-item';
+        b.dataset.id = a.id;
+        const so = typeof a.badge === 'function' ? a.badge() : a.badge;
+        b.innerHTML =
+          `<span class="fbw-menu-icon">${a.icon || '•'}</span>` +
+          `<span class="fbw-menu-label"></span>` +
+          (so ? `<span class="fbw-menu-badge">${so}</span>` : '');
+        b.querySelector('.fbw-menu-label').textContent = a.label || a.id;
+        b.addEventListener('click', () => {
+          this._dongMenu();
+          try { a.onClick(); } catch (e) { console.error('[fbw] lối vào lỗi', a.id, e); }
+        });
+        menu.appendChild(b);
+      });
+      menu.classList.add('fbw-open');
+      this._datViTriMenu();
+    }
+
+    _dungMenu() {
+      const menu = document.createElement('div');
+      menu.className = 'fbw-menu';
+      menu.id = 'fbw-menu';
+      document.body.appendChild(menu);
+      this.els.menu = menu;
+      // Bấm ra ngoài / Esc thì đóng. Đăng ký MỘT lần ở đây, không phải mỗi lần mở —
+      // mở 10 lần mà gắn 10 listener thì lần thứ 10 chạy 10 lượt.
+      document.addEventListener('click', (e) => {
+        if (!this._menuMo()) return;
+        if (e.target.closest && e.target.closest('.fbw-menu, .fbw-fab')) return;
+        this._dongMenu();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this._menuMo()) this._dongMenu();
+      });
+      window.addEventListener('resize', () => {
+        if (this._menuMo()) this._datViTriMenu();
+      });
+      return menu;
+    }
+
+    _datViTriMenu() {
+      const menu = this.els.menu, fab = this.els.fab;
+      if (!menu || !fab) return;
+      const r = fab.getBoundingClientRect();
+      const mr = menu.getBoundingClientRect();
+      // Nút KÉO THẢ được nên menu phải bám theo nó, và phải tự lật khi nút đang nằm
+      // sát mép trên/trái — nếu không menu tràn ra ngoài màn hình và không ai bấm được.
+      let top = r.top - mr.height - 8;
+      if (top < 8) top = Math.min(r.bottom + 8, window.innerHeight - mr.height - 8);
+      let left = r.right - mr.width;
+      left = Math.max(8, Math.min(left, window.innerWidth - mr.width - 8));
+      menu.style.top = Math.max(8, top) + 'px';
+      menu.style.left = left + 'px';
+    }
+
+    _dongMenu() {
+      if (this.els.menu) this.els.menu.classList.remove('fbw-open');
+    }
+
+    /** App khác đăng ký một lối vào. Trùng `id` thì THAY, không nhân đôi. */
+    themLoiVao(action) {
+      if (!action || !action.id || typeof action.onClick !== 'function') return false;
+      this._actions = (this._actions || []).filter(a => a.id !== action.id);
+      this._actions.push(action);
+      return true;
+    }
+
     _fabPositionKey() {
       const u = this.cfg.userId ? `:${this.cfg.userId}` : '';
       return `fbw-fab-pos:${this.cfg.project}${u}`;
@@ -851,7 +1011,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       fab.addEventListener('pointercancel', onUp);
       fab.addEventListener('click', (e) => {
         if (suppressClick) { e.stopPropagation(); e.preventDefault(); return; }
-        this.toggle();
+        this._onFabClick();
       });
 
       window.addEventListener('resize', () => {
@@ -1040,6 +1200,51 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         this._startStatusPoll();
       } else {
         this._stopStatusPoll();
+      }
+    }
+
+    /**
+     * Sau khi vé ĐÃ GỬI, mời người dùng một việc làm tiếp (hỏi trợ lý…).
+     *
+     * Cố ý đặt SAU khi gửi, không phải trước: chặn vé lại để chờ một câu trả lời AI
+     * (20-250 giây) là bắt người đang kẹt phải chờ thêm, và nếu AI trả lời sai thì
+     * việc của họ chết luôn ở đó. Vé luôn đi ngay; lời mời chỉ là lối tắt.
+     */
+    _moiSauKhiGui(entry) {
+      const ds = (global.__fbw_after_send__ || []);
+      if (!ds.length || !this.els.status) return;
+      for (const fn of ds) {
+        let loi = null;
+        try { loi = fn(entry); } catch (_e) { continue; }
+        if (!loi || !loi.label || typeof loi.onClick !== 'function') continue;
+        const hop = document.createElement('div');
+        hop.className = 'fbw-moi';
+        const chu = document.createElement('span');
+        chu.textContent = loi.text || '';
+        const nut = document.createElement('button');
+        nut.type = 'button';
+        nut.className = 'fbw-moi-nut';
+        nut.textContent = loi.label;
+        nut.addEventListener('click', () => {
+          hop.remove();
+          try { loi.onClick(entry); } catch (_e) {}
+        });
+        hop.appendChild(chu);
+        hop.appendChild(nut);
+        this.els.status.after(hop);
+        setTimeout(() => hop.remove(), 30000);
+        return;   // một lời mời một lúc — hai cái là một biểu mẫu
+      }
+    }
+
+    /** Mở khung góp ý với chữ soạn sẵn + ngữ cảnh riêng của app gọi.
+     *  `context` được gộp vào gói ngữ cảnh gửi kèm vé, không đè phần widget tự thu. */
+    moKhungGopY(o) {
+      this._contextThem = (o && o.context) || null;
+      this.toggle(true);
+      if (o && o.text && this.els.msg) {
+        this.els.msg.value = o.text;
+        this.els.msg.dispatchEvent(new Event('input'));
       }
     }
 
@@ -1241,6 +1446,12 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         entry.pointed_element = this.pickedElements[0];
       }
       if (this.cfg.enableContext) entry.context = this._buildContextBundle();
+      // v1.7 — ngữ cảnh do app khác đưa vào (mạch hội thoại trợ lý…). Gộp THÊM, không
+      // đè phần widget tự thu, và chỉ dùng cho đúng vé này.
+      if (this._contextThem) {
+        entry.context = Object.assign({}, entry.context || {}, { app_them: this._contextThem });
+        this._contextThem = null;
+      }
       // v1.3 — only include successfully-uploaded attachments in the payload
       const uploaded = this.attachments.filter(a => a.status === 'uploaded' && a.file_url);
       if (uploaded.length) {
@@ -1293,6 +1504,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         setTimeout(() => { if (st.textContent.startsWith('✓')) st.textContent = ''; }, 2500);
         this._renderHistory();
         this._fetchStatuses();  // immediate first pull so user sees the row
+        this._moiSauKhiGui(entry);
       } catch (e) {
         st.className = 'fbw-status fbw-error';
         st.textContent = this.copy.net_error;
@@ -2201,6 +2413,35 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
     /** App chủ gọi khi BIẾT rõ ngữ cảnh hơn tầng mạng (tên endpoint, tham số, chứng từ). */
     report(o) {
       if (global.__fbw_instance__) global.__fbw_instance__.report(o || {});
+    },
+    /** Đăng ký lời mời hiện SAU KHI vé gửi xong: fn(entry) → {text, label, onClick}
+     *  (trả về null nếu vé này không hợp). Vé không bao giờ bị giữ lại để chờ. */
+    registerAfterSend(fn) {
+      if (typeof fn !== 'function') return false;
+      (global.__fbw_after_send__ = global.__fbw_after_send__ || []).push(fn);
+      return true;
+    },
+    /** Gói ngữ cảnh widget ĐANG thu (lỗi console + thao tác gần đây + màn).
+     *  App khác đọc cái này thay vì tự vá console lần thứ hai trên cùng một trang. */
+    getContextBundle() {
+      const w = global.__fbw_instance__;
+      if (!w || !w.cfg.enableContext) return null;
+      try { return w._buildContextBundle(); } catch (_e) { return null; }
+    },
+    /** Thêm một lối vào cho nút nổi: {id, label, icon, onClick, badge?, order?}.
+     *  Gọi được TRƯỚC khi widget gắn — lối vào xếp hàng, gắn xong là có. */
+    registerAction(action) {
+      const q = (global.__fbw_actions__ = global.__fbw_actions__ || []);
+      q.push(action);
+      if (global.__fbw_instance__) return global.__fbw_instance__.themLoiVao(action);
+      return true;
+    },
+    /** Mở thẳng khung góp ý, kèm chữ soạn sẵn + ngữ cảnh của app gọi. */
+    openComposer(o) {
+      const w = global.__fbw_instance__;
+      if (!w) return false;
+      w.moKhungGopY(o || {});
+      return true;
     },
   };
 

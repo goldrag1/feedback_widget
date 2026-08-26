@@ -142,6 +142,11 @@ import "./feedback_widget_core.js";
       maxEventsPerMinute: ct.max_events_per_minute === undefined ? 120 : ct.max_events_per_minute,
       redactKeys: Array.isArray(ct.redact_keys) ? ct.redact_keys : undefined,
       userId: userId,
+      // v1.7 — khung góp ý gọn lại theo SỐ ĐO, không theo cảm giác: 164 vé do người
+      // bấm trên prod 26/08 — ghim 139 (84%), ảnh 8 (4%), phân loại 3 (2%), mức độ 1.
+      // Hai ô phân loại mặc định TẮT; ai cần thì bật ở Cài đặt, không phải sửa mã.
+      enableTags: !!ct.hien_tag,
+      enableAttach: ct.cho_dinh_anh === undefined ? true : !!ct.cho_dinh_anh,
       language: "vi",
       primaryColor: settings.primary_color || "#1f3a5f",
       fabColor: settings.fab_color || "#047857",
@@ -159,6 +164,11 @@ import "./feedback_widget_core.js";
       },
     });
 
+    // v1.7 — lối vào "Thông báo tính năng mới". Máy chủ (`api.thong_bao`) và phần vẽ
+    // thẻ thông báo (`window.FeedbackNotices`) do bản cập nhật tính năng cung cấp;
+    // THIẾU cái nào thì lối này không hiện — không bao giờ mời người dùng vào ngõ cụt.
+    dangKyLoiThongBao();
+
     // Refresh widget's idea of the current screen on every Frappe route change
     try {
       window.frappe.router.on("change", function () {
@@ -167,6 +177,51 @@ import "./feedback_widget_core.js";
         }
       });
     } catch (_e) {}
+  }
+
+  // ---------- v1.7: lối vào thông báo tính năng ----------
+  function dangKyLoiThongBao() {
+    var chuaXem = 0, daHoi = false;
+    // Phần vẽ thẻ và endpoint đi CÙNG một bản cập nhật, nên sự có mặt của hàm vẽ là
+    // câu trả lời cho "endpoint đã lên chưa". Hỏi khi chưa lên thì mỗi lần tải trang
+    // là một dòng 417 đỏ + nguyên traceback trong console của MỌI màn — đo được ở
+    // vòng kiểm 26/08, và console đỏ làm người sau bỏ qua cả lỗi thật.
+    function coVeThe() {
+      return !!(window.FeedbackNotices && window.FeedbackNotices.show);
+    }
+    function dem() {
+      if (!coVeThe()) return;
+      daHoi = true;
+      window.frappe.call({
+        method: "feedback_widget.api.thong_bao.cua_toi",
+        error: function () {},
+        callback: function (r) {
+          var ds = (r && r.message) || [];
+          chuaXem = ds.length;
+          window.__fbw_thong_bao__ = ds;
+        },
+      });
+    }
+    window.FeedbackWidget.registerAction({
+      id: "thong-bao",
+      icon: "🔔",
+      label: "Thông báo tính năng mới",
+      order: 30,
+      // `enabled` được gọi mỗi lần mở menu ⇒ cũng là nhịp hỏi số chưa xem lần đầu,
+      // sau khi bản cập nhật lên mà không cần nạp lại trang.
+      enabled: function () {
+        if (!coVeThe()) return false;
+        if (!daHoi) dem();
+        return true;
+      },
+      badge: function () { return chuaXem || 0; },
+      onClick: function () {
+        window.FeedbackNotices.show(window.__fbw_thong_bao__ || []);
+        // Người dùng vừa xem xong: đếm lại để badge không nói dối ở lần mở sau.
+        window.setTimeout(dem, 1500);
+      },
+    });
+    dem();
   }
 
   // Poll for frappe.boot — desk init is async; bail after 30s of no boot

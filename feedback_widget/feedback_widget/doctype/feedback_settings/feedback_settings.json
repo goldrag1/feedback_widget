@@ -117,74 +117,93 @@
    "label": "Màu nút bấm nổi (FAB Color)"
   },
   {
+   "fieldname": "section_khung_gop_y",
+   "fieldtype": "Section Break",
+   "label": "Khung góp ý"
+  },
+  {
+   "default": "0",
+   "description": "Đo trên prod 26/08: 3/164 vé có phân loại, 1/164 có mức độ — mặc định TẮT.",
+   "fieldname": "hien_tag",
+   "fieldtype": "Check",
+   "label": "Hiện ô phân loại (loại + mức độ)"
+  },
+  {
+   "default": "1",
+   "description": "8/164 vé có ảnh, gần nhất 18/08 — ít dùng nhưng là đường DUY NHẤT để chỉ thứ nằm ngoài phần mềm.",
+   "fieldname": "cho_dinh_anh",
+   "fieldtype": "Check",
+   "label": "Cho đính ảnh (nút 📎)"
+  },
+  {
    "fieldname": "section_thu",
    "fieldtype": "Section Break",
    "label": "Thu thập tự động (sổ chặn)"
   },
   {
+   "default": "1",
+   "description": "Không phụ thuộc ô 'Bật Feedback Widget': ẩn nút 💬 mà vẫn thu là chuyện bình thường.",
    "fieldname": "auto_report",
    "fieldtype": "Check",
-   "label": "Tự tạo vé khi máy chủ TỪ CHỐI hoặc màn hình LỖI",
-   "default": "1",
-   "description": "Không phụ thuộc ô 'Bật Feedback Widget': ẩn nút 💬 mà vẫn thu là chuyện bình thường."
+   "label": "Tự tạo vé khi máy chủ TỪ CHỐI hoặc màn hình LỖI"
   },
   {
+   "default": "1",
    "fieldname": "telegram_first_seen",
    "fieldtype": "Check",
-   "label": "Đẩy Telegram khi chữ ký xuất hiện LẦN ĐẦU",
-   "default": "1"
+   "label": "Đẩy Telegram khi chữ ký xuất hiện LẦN ĐẦU"
   },
   {
+   "default": "1",
    "fieldname": "bridge_error_log",
    "fieldtype": "Check",
-   "label": "Đưa lỗi việc nền (Error Log) vào cùng hộp thư",
-   "default": "1"
+   "label": "Đưa lỗi việc nền (Error Log) vào cùng hộp thư"
   },
   {
+   "default": "10",
    "fieldname": "throttle_minutes",
    "fieldtype": "Int",
-   "label": "Bóp ga mỗi chữ ký (phút)",
-   "default": "10"
+   "label": "Bóp ga mỗi chữ ký (phút)"
   },
   {
+   "default": "3",
    "fieldname": "lap_lai_canh_bao",
    "fieldtype": "Int",
-   "label": "Số lần lặp coi là ĐANG KẸT",
-   "default": "3"
+   "label": "Số lần lặp coi là ĐANG KẸT"
   },
   {
    "fieldname": "column_break_thu",
    "fieldtype": "Column Break"
   },
   {
+   "default": "1",
    "fieldname": "collect_usage",
    "fieldtype": "Check",
-   "label": "Ghi sổ hành vi dùng (mở màn, bấm nút)",
-   "default": "1"
+   "label": "Ghi sổ hành vi dùng (mở màn, bấm nút)"
   },
   {
+   "default": "100",
    "fieldname": "usage_sample_pct",
    "fieldtype": "Int",
-   "label": "Lấy mẫu hành vi (%)",
-   "default": "100"
+   "label": "Lấy mẫu hành vi (%)"
   },
   {
+   "default": "120",
    "fieldname": "max_events_per_minute",
    "fieldtype": "Int",
-   "label": "Trần sự kiện mỗi phút / phiên",
-   "default": "120"
+   "label": "Trần sự kiện mỗi phút / phiên"
   },
   {
+   "default": "90",
    "fieldname": "retention_days",
    "fieldtype": "Int",
-   "label": "Giữ sổ thô (ngày)",
-   "default": "90"
+   "label": "Giữ sổ thô (ngày)"
   },
   {
+   "default": "17",
    "fieldname": "digest_hour",
    "fieldtype": "Int",
-   "label": "Giờ gửi tổng kết hằng ngày (-1 = tắt)",
-   "default": "17"
+   "label": "Giờ gửi tổng kết hằng ngày (-1 = tắt)"
   },
   {
    "fieldname": "section_rieng_tu",
@@ -192,15 +211,15 @@
    "label": "Riêng tư"
   },
   {
+   "default": "password,pwd,token,secret,api_key,key,pin,otp,csrf",
    "fieldname": "redact_keys",
    "fieldtype": "Small Text",
-   "label": "Khoá cần che trong tham số",
-   "default": "password,pwd,token,secret,api_key,key,pin,otp,csrf"
+   "label": "Khoá cần che trong tham số"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-26 11:00:00.000000",
+ "modified": "2026-08-26 17:08:31.696773",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Settings",
