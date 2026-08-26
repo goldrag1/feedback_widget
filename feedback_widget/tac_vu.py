@@ -83,6 +83,25 @@ def _loai_su_kien(cau: str) -> str:
     return "loi" if lop else "chan"
 
 
+# Tên bản ghi CHƯA LƯU của Frappe: `new-sales-order-ppggarjhfe` (doctype đã scrub + 10 ký
+# tự ngẫu nhiên). Desk hỏi quyền cho nó qua `frappe.realtime.has_permission` NGAY khi người
+# dùng mở một biểu mẫu mới, Frappe ném `DoesNotExistError` — không ai bị chặn, biểu mẫu vẫn
+# dùng bình thường. Đo trên prod HTS 26/08: 9 trong 22 vé đang mở là loại này, mỗi vé một mã
+# ngẫu nhiên khác nhau nên bộ gộp theo chữ ký không dồn lại được; vé giả đẩy vé THẬT xuống
+# dưới. Bỏ ngay từ đầu vào, ở CẢ HAI đường (cầu định kỳ và bộ nạp lịch sử).
+_CHUA_LUU = re.compile(r"\bnew-[a-z0-9]+(?:-[a-z0-9]+)*-[a-z]{10}\b")
+
+
+def _la_ban_ghi_chua_luu(cau: str, method: str = "") -> bool:
+    """Chỉ bỏ khi ĐÚNG cặp: tên bản ghi chưa lưu + lỗi "không tìm thấy".
+
+    Không bỏ theo mỗi cái tên: một `ValidationError` xảy ra TRÊN bản ghi chưa lưu vẫn là
+    lỗi thật (người dùng đang nhập dở và bị chặn), phải vào sổ như thường.
+    """
+    van = f"{cau or ''} {method or ''}"
+    return bool(_CHUA_LUU.search(van)) and "DoesNotExistError" in van
+
+
 def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
     """Cầu Error Log cũng phải ghi vào SỔ THÔ, không chỉ đẻ vé.
 
@@ -181,6 +200,9 @@ def bac_cau_error_log():
             continue
         # "Session Stopped" là tiếng ồn của chính Frappe, không phải việc của ai.
         if "Session Stopped" in (r.method or "") or "Session Stopped" in cau:
+            continue
+        # Bản ghi chưa lưu bị hỏi quyền — tiếng ồn của desk, không phải ai bị chặn.
+        if _la_ban_ghi_chua_luu(cau, r.method):
             continue
         frappe.set_user("Administrator")
         try:
@@ -281,6 +303,9 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
         if not cau or not _dang_ngoai_le(cau):
             continue
         if "Session Stopped" in (r.method or "") or "Session Stopped" in cau:
+            continue
+        # Bản ghi chưa lưu bị hỏi quyền — tiếng ồn của desk, không phải ai bị chặn.
+        if _la_ban_ghi_chua_luu(cau, r.method):
             continue
         ck = _tinh_chu_ky(cau, r.method or "", "chan")
         g = nhom.setdefault(ck, {"so_lan": 0, "cau": cau, "method": r.method,
