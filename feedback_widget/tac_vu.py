@@ -11,6 +11,7 @@ from frappe.utils import add_days, cint, now_datetime, get_datetime
 from feedback_widget import notifier
 from feedback_widget.cai_dat import cai_dat
 from feedback_widget.chu_ky import chu_ky as _tinh_chu_ky
+from feedback_widget.chu_ky import chuan_hoa as _chuan_hoa
 from feedback_widget.chu_ky import dau_hieu as _tinh_dau_hieu
 
 MOC = "feedback_widget:moc_error_log"        # mốc đã đọc tới đâu (frappe cache/singles)
@@ -62,11 +63,24 @@ _LOI_KHUNG = ("ValidationError", "PermissionError", "MandatoryError", "Duplicate
               "LinkValidationError", "LinkExistsError", "InvalidStatusError", "DoesNotExistError")
 
 
-def _loai_su_kien(cau: str) -> str:
+def _lop_loi(cau: str) -> str:
+    """Tên lớp ngoại lệ, đã bỏ tiền tố module: `builtins.TypeError` → `TypeError`.
+
+    Trình duyệt gửi tên TRẦN (`TypeError: …`) còn Error Log ghi cả đường module, nên
+    không bỏ tiền tố thì cùng một sự cố ra hai chữ ký và bộ chống trùng bên dưới mù.
+    """
     dau = (cau or "").split(":", 1)[0].strip()
-    if dau.startswith("frappe.exceptions.") or dau.rsplit(".", 1)[-1] in _LOI_KHUNG:
+    return dau.rsplit(".", 1)[-1] if _NGOAI_LE.match(dau) or "." in dau else ""
+
+
+def _loai_su_kien(cau: str) -> str:
+    lop = _lop_loi(cau)
+    if lop in _LOI_KHUNG or (cau or "").startswith("frappe.exceptions."):
         return "chan"
-    return "loi"
+    # KHÔNG có lớp ngoại lệ nào ⇒ đây là dòng NHẬT KÝ mang dấu hiệu máy-đọc (app dùng
+    # `log_error` làm sổ tay), không phải phần mềm hỏng. Gọi nó là `loi` thì bảng xếp hạng
+    # đẩy một dòng ghi chú lên trên những ca thật.
+    return "loi" if lop else "chan"
 
 
 def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
@@ -86,11 +100,20 @@ def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
     ck = _tinh_chu_ky(cau, (r.method or "")[:200], loai)
     # Lỗi 500 của đường ĐỒNG BỘ vào Error Log *và* được widget báo từ trình duyệt. Ghi cả
     # hai là một sự cố hoá hai dòng, và "bao nhiêu lần" phồng theo hướng nguy hiểm nhất.
-    trung = frappe.db.sql("""SELECT name FROM `tabFeedback Event`
-         WHERE signature=%s AND ts BETWEEN %s - INTERVAL 120 SECOND AND %s + INTERVAL 120 SECOND
-         LIMIT 1""", (ck, r.creation, r.creation))
-    if trung:
-        return 0
+    # So bằng chữ ký thôi thì KHÔNG bắt được: hai bên khai `endpoint` khác nhau (trình duyệt
+    # biết tên endpoint, Error Log chỉ có tiêu đề dòng log) và câu của Error Log mang thêm
+    # tiền tố module. Nên so thêm bằng CÂU đã chuẩn hoá, khớp một đầu là đủ.
+    cua_toi = _chuan_hoa(cau)
+    cu = frappe.db.sql("""SELECT signature, message FROM `tabFeedback Event`
+         WHERE kind IN ('chan','loi')
+           AND ts BETWEEN %s - INTERVAL 120 SECOND AND %s + INTERVAL 120 SECOND""",
+         (r.creation, r.creation))
+    for sig_cu, msg_cu in cu:
+        if sig_cu == ck:
+            return 0
+        khac = _chuan_hoa(msg_cu or "")
+        if khac and (khac.endswith(cua_toi) or cua_toi.endswith(khac)):
+            return 0
     nguoi = r.owner or "Administrator"
     vai = ", ".join(sorted(x for x in (frappe.get_roles(nguoi) or []) if x not in ("All", "Guest")))[:500]
     frappe.get_doc({

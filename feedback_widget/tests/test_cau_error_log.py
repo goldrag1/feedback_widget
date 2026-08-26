@@ -101,6 +101,33 @@ class TestCauErrorLog(FrappeTestCase):
 		self.assertEqual(tac_vu._loai_su_kien("builtins.TypeError: 'str' object is not callable"), "loi")
 		self.assertEqual(tac_vu._loai_su_kien("MySQLdb.OperationalError: (1054, 'Unknown column')"), "loi")
 
+	def test_dong_NHAT_KY_mang_dau_hieu_khong_phai_la_phan_mem_hong(self):
+		"""App dùng `log_error` làm sổ tay; gọi nó là `loi` thì nó chen lên trên ca thật."""
+		self.assertEqual(tac_vu._loai_su_kien(
+			"Repack · [OUTPUT:XB-2026-0056:Xả băng] Nhập kho kết quả Xả băng [NHAPDUOI] …"), "chan")
+
+	def test_khong_ghi_trung_khi_trinh_duyet_da_bao_CUNG_su_co(self):
+		"""Trình duyệt gửi tên lớp TRẦN, Error Log ghi cả đường module — chữ ký khác nhau
+		nên chỉ so chữ ký là đếm đôi đúng ca 500 của đường đồng bộ."""
+		tac_vu.bac_cau_error_log()
+		self._log("Traceback (most recent call last):\nbuiltins.TypeError: 'str' object is not callable",
+		          method="steel_app.api.record_final_payment")
+		r = frappe.db.get_value("Error Log", {"method": "steel_app.api.record_final_payment"},
+		                        ["name", "creation"], as_dict=True, order_by="creation desc")
+		frappe.get_doc({
+			"doctype": "Feedback Event", "project": tac_vu._du_an(), "kind": "loi",
+			"ts": r.creation, "user": "Administrator", "screen_id": "#/phieuthu/new",
+			"endpoint": "steel_app.api.record_final_payment",
+			"message": "TypeError: 'str' object is not callable",
+			"signature": tac_vu._tinh_chu_ky("TypeError: 'str' object is not callable",
+			                                 "steel_app.api.record_final_payment", "loi"),
+		}).insert(ignore_permissions=True)
+		frappe.db.commit()
+		kq = tac_vu.bac_cau_error_log()
+		self.assertEqual(kq["su_kien"], 0, "một sự cố hoá hai dòng sổ")
+		frappe.db.delete("Feedback Event", {"screen_id": "#/phieuthu/new"})
+		frappe.db.commit()
+
 	def test_KHONG_ghi_hai_dong_cho_mot_su_co_da_co_tren_so(self):
 		"""Lỗi 500 của đường đồng bộ vào CẢ Error Log lẫn sổ (widget báo từ trình duyệt).
 
