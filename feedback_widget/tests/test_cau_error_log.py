@@ -141,11 +141,35 @@ class TestCauErrorLog(FrappeTestCase):
 		cau = tac_vu._cau_cuoi(NGOAI_LE)
 		frappe.get_doc({
 			"doctype": "Feedback Event", "project": tac_vu._du_an(), "kind": "chan",
-			"ts": r.creation, "user": "Administrator", "screen_id": "viec-nen",
+			"ts": r.creation, "user": "Administrator", "screen_id": "#/lsx/LSX-KIEMTHU",
 			"endpoint": "viec_nen hoan_thanh_cong_doan", "message": cau,
 			"signature": tac_vu._tinh_chu_ky(cau, "viec_nen hoan_thanh_cong_doan", "chan"),
 		}).insert(ignore_permissions=True)
 		frappe.db.commit()
 		kq = tac_vu.bac_cau_error_log()
 		self.assertEqual(kq["su_kien"], 0, "đã có dòng cùng chữ ký trong ±2 phút mà vẫn ghi thêm")
-		self.assertEqual(frappe.db.count("Feedback Event", {"screen_id": "viec-nen"}), 1)
+		self.assertEqual(frappe.db.count("Feedback Event", {"screen_id": "viec-nen"}), 0)
+		frappe.db.delete("Feedback Event", {"screen_id": "#/lsx/LSX-KIEMTHU"})
+
+	def test_HAI_lan_thu_lai_that_thi_ghi_CA_HAI(self):
+		"""Lặp ≥3 lần trong 15 phút = người ta đang đứng đó thử lại. Gộp theo chữ ký là
+		xoá đúng tín hiệu cần đo — chống trùng phải khoá theo DÒNG LOG, không theo chữ ký."""
+		tac_vu.bac_cau_error_log()
+		self._log(NGOAI_LE, method="viec_nen hoan_thanh_cong_doan")
+		self._log(NGOAI_LE, method="viec_nen hoan_thanh_cong_doan")
+		kq = tac_vu.bac_cau_error_log()
+		self.assertEqual(kq["su_kien"], 2, "nuốt mất lượt thử lại thứ hai")
+
+	def test_chay_lai_cau_KHONG_ghi_lai_cung_mot_dong_log(self):
+		tac_vu.bac_cau_error_log()
+		self._log(NGOAI_LE, method="viec_nen hoan_thanh_cong_doan")
+		self.assertEqual(tac_vu.bac_cau_error_log()["su_kien"], 1)
+		r = frappe.db.get_value("Error Log", {"method": "viec_nen hoan_thanh_cong_doan"},
+		                        "name", order_by="creation desc")
+		# Lùi mốc là đọc lại CẢ site (site dev còn Error Log của việc khác), nên đo đúng
+		# dòng của mình chứ không đo tổng.
+		frappe.db.set_global(tac_vu.MOC, "2000-01-01 00:00:00.000000")
+		tac_vu.bac_cau_error_log()
+		self.assertEqual(frappe.db.count("Feedback Event",
+			{"screen_id": "viec-nen", "context": ["like", f'%"error_log": "{r}"%']}), 1,
+			"chạy lại cầu ghi lại chính dòng log ấy lần nữa")

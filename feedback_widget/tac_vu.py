@@ -103,9 +103,20 @@ def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
     # So bằng chữ ký thôi thì KHÔNG bắt được: hai bên khai `endpoint` khác nhau (trình duyệt
     # biết tên endpoint, Error Log chỉ có tiêu đề dòng log) và câu của Error Log mang thêm
     # tiền tố module. Nên so thêm bằng CÂU đã chuẩn hoá, khớp một đầu là đủ.
+    # (a) CHÍNH dòng log này đã vào sổ rồi (chạy lại cầu, nạp bù lịch sử) — khoá theo tên
+    # dòng log, KHÔNG theo chữ ký: hai lượt bấm cách nhau 38 giây có cùng chữ ký và đó là
+    # tín hiệu "kẹt lặp" (người ta đang đứng đó thử lại), nuốt nó là xoá đúng thứ cần đo.
+    if frappe.db.sql("""SELECT name FROM `tabFeedback Event`
+         WHERE screen_id='viec-nen' AND context LIKE %s LIMIT 1""",
+         (f'%"error_log": "{r.name}"%',)):
+        return 0
+    # (b) Cùng sự cố mà TRÌNH DUYỆT đã báo (500 của đường đồng bộ vào cả hai nơi). Chữ ký
+    # không khớp được: hai bên khai `endpoint` khác nhau và câu của Error Log mang thêm tiền
+    # tố module — nên so bằng CÂU đã chuẩn hoá, khớp một đầu là đủ. Chỉ soi dòng KHÔNG do cầu
+    # ghi, để cầu không tự bịt miệng mình.
     cua_toi = _chuan_hoa(cau)
     cu = frappe.db.sql("""SELECT signature, message FROM `tabFeedback Event`
-         WHERE kind IN ('chan','loi')
+         WHERE kind IN ('chan','loi') AND IFNULL(screen_id,'') <> 'viec-nen'
            AND ts BETWEEN %s - INTERVAL 120 SECOND AND %s + INTERVAL 120 SECOND""",
          (r.creation, r.creation))
     for sig_cu, msg_cu in cu:
