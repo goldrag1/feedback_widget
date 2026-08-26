@@ -55,6 +55,64 @@ def _moc_da_doc() -> str:
     return moc
 
 
+# Ngoại lệ do `frappe.throw` sinh ra là LUẬT NGHIỆP VỤ chạy đúng (chan); mọi lớp lỗi khác
+# là phần mềm hỏng (loi). Trộn hai thứ là cách chắc chắn xếp sai thứ tự ưu tiên, nên sổ phải
+# phân biệt ngay từ lúc ghi.
+_LOI_KHUNG = ("ValidationError", "PermissionError", "MandatoryError", "DuplicateEntryError",
+              "LinkValidationError", "LinkExistsError", "InvalidStatusError", "DoesNotExistError")
+
+
+def _loai_su_kien(cau: str) -> str:
+    dau = (cau or "").split(":", 1)[0].strip()
+    if dau.startswith("frappe.exceptions.") or dau.rsplit(".", 1)[-1] in _LOI_KHUNG:
+        return "chan"
+    return "loi"
+
+
+def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
+    """Cầu Error Log cũng phải ghi vào SỔ THÔ, không chỉ đẻ vé.
+
+    VÌ SAO: widget chỉ ghi sự kiện ở tầng fetch của trình duyệt, mà việc NỀN trả HTTP 200
+    rồi mới báo hỏng qua thanh tiến độ. Đo prod 25-26/08: 15 lần xưởng bị chặn ở việc nền
+    (lệnh chưa duyệt, [THIEUCAN], [XINDUYET], thiếu kho vai) — 0 dòng `Feedback Event`, nên
+    mọi bảng xếp hạng (chỗ tắc · kẹt lặp · bỏ cuộc · % chặn) đọc bằng 0 trong khi xưởng đứng
+    hình. Vé thì có, nhưng vé không đếm được nhịp và không dựng được chuỗi thao tác.
+
+    KHÔNG gọi `su_kien.ghi_lo`: hàm đó là endpoint HTTP, đóng dấu `frappe.session.user` +
+    `now_datetime()` — ở đây danh tính là CHỦ dòng Error Log và thời điểm là lúc nó xảy ra.
+    Phần dùng chung thật sự (chữ ký, dấu hiệu) vẫn chỉ có một định nghĩa: `chu_ky.py`.
+    """
+    loai = _loai_su_kien(cau)
+    ck = _tinh_chu_ky(cau, (r.method or "")[:200], loai)
+    # Lỗi 500 của đường ĐỒNG BỘ vào Error Log *và* được widget báo từ trình duyệt. Ghi cả
+    # hai là một sự cố hoá hai dòng, và "bao nhiêu lần" phồng theo hướng nguy hiểm nhất.
+    trung = frappe.db.sql("""SELECT name FROM `tabFeedback Event`
+         WHERE signature=%s AND ts BETWEEN %s - INTERVAL 120 SECOND AND %s + INTERVAL 120 SECOND
+         LIMIT 1""", (ck, r.creation, r.creation))
+    if trung:
+        return 0
+    nguoi = r.owner or "Administrator"
+    vai = ", ".join(sorted(x for x in (frappe.get_roles(nguoi) or []) if x not in ("All", "Guest")))[:500]
+    frappe.get_doc({
+        "doctype": "Feedback Event",
+        "project": du_an,
+        "kind": loai,
+        "ts": r.creation,
+        "user": nguoi,
+        "user_roles": vai,
+        "screen_id": "viec-nen",
+        "screen_name": f"Việc nền · {(r.method or '')[:60]}",
+        "endpoint": (r.method or "")[:200],
+        "outcome": loai,
+        "signature": ck,
+        "marker": _tinh_dau_hieu(cau) or None,
+        "message": cau[:1000],
+        "context": json.dumps({"app": {"nguon": "error_log", "error_log": r.name}},
+                              ensure_ascii=False),
+    }).insert(ignore_permissions=True)
+    return 1
+
+
 def bac_cau_error_log():
     """Lỗi việc NỀN cũng phải vào cùng hộp thư.
 
@@ -81,7 +139,8 @@ def bac_cau_error_log():
 
     from feedback_widget.api.feedback import collect
 
-    ve = 0
+    ve = dong_so = 0
+    du_an = _du_an()
     for r in rows:
         cau = _cau_cuoi(r.error)
         if not cau or not _dang_ngoai_le(cau):
@@ -108,12 +167,13 @@ def bac_cau_error_log():
                                     "khi": str(r.creation)}},
             })
             ve += 1
+            dong_so += _ghi_su_kien_nen(r, cau, du_an)
         except Exception:
             frappe.log_error(frappe.get_traceback(), "feedback_widget bac_cau_error_log")
 
     frappe.db.set_global(MOC, str(rows[-1].creation))
     frappe.db.commit()
-    return {"doc": len(rows), "ve": ve}
+    return {"doc": len(rows), "ve": ve, "su_kien": dong_so}
 
 
 def don_so_cu():
