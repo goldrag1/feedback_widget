@@ -14,10 +14,18 @@ app_version = "1.1.0"
 # callbacks. Cache-bust via content hash from assets.json — no ?version= suffix.
 app_include_js = ["feedback_widget.bundle.js"]
 
-# MỘT cửa boot duy nhất: `extend_bootinfo` (bản 24/08) — không thêm `boot_session` song
-# song, vì hai hàm cùng nhồi cài đặt vào boot là hai bản của một luật, và trình duyệt sẽ
-# đọc bản nào là do thứ tự nạp quyết định.
+# HAI KHOÁ boot khác nhau, mỗi khoá một cửa — KHÔNG phải hai bản của một luật:
+#   `extend_bootinfo` → `boot.feedback_widget_settings`  (HIỂN THỊ: bật/tắt, vai, màu)
+#   `boot_session`    → `boot.feedback_widget`           (THU THẬP: collect_usage, throttle…)
+# Chú thích cũ ở đây từng cấm thêm `boot_session`; luật đó đúng khi hai hàm nhồi CÙNG một
+# khoá, và sai ở đây — bỏ cửa dưới là bundle rơi vào nhánh an toàn "boot rỗng ⇒ KHÔNG tự
+# thu": đo trên gương HTS 26/08 sau khi cài từ HEAD, nút góp ý hiện và vé gửi được nhưng sổ
+# sự kiện đứng im 0 dòng, không một lỗi nào. `test_boot_payload.py` khoá lại việc này bằng
+# cách đọc CHÍNH bundle: mọi khoá `ct.<x>` nó dùng đều phải có người nhồi.
+# Khi bản gộp một cửa của phiên khác lên (extend_bootinfo tự gọi payload thu thập), xoá dòng
+# `boot_session` — lúc ấy nó mới thành bản chép thứ hai.
 extend_bootinfo = "feedback_widget.api.feedback.extend_bootinfo"
+boot_session = "feedback_widget.cai_dat.boot_session"
 
 scheduler_events = {
     "cron": {
