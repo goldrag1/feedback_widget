@@ -76,6 +76,21 @@ def _jsonl_path(project: str) -> pathlib.Path:
     return pathlib.Path(frappe.get_site_path("private", "feedback", f"{safe}.jsonl"))
 
 
+def _la_chan_da_biet(thong_diep: str) -> bool:
+    """Thông điệp này có nằm trong danh sách "chặn đúng luật, đừng đẻ vé" không.
+
+    Khai ở `Feedback Settings.khong_de_ve`, mỗi dòng một mẫu — DỮ LIỆU, để người vận hành
+    tắt tiếng một luật mà không phải sửa mã rồi deploy ba bench.
+    """
+    from feedback_widget.cai_dat import cai_dat
+
+    mau = [d.strip().lower() for d in (cai_dat().get("khong_de_ve") or "").splitlines() if d.strip()]
+    if not mau:
+        return False
+    van = frappe.utils.strip_html(str(thong_diep or "")).lower()
+    return any(m in van for m in mau)
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def collect(**kwargs):
     """Accept a feedback payload from the widget. Returns {ok, name, saved_as}.
@@ -90,6 +105,14 @@ def collect(**kwargs):
     except FeedbackError as e:
         frappe.local.response["http_status_code"] = 400
         return {"ok": False, "error": str(e)}
+
+    # Chặn ĐÚNG LUẬT mà đã biết trước thì đừng đẻ vé: nó đẩy vé thật xuống dưới và bắn
+    # Telegram lúc nửa đêm cho thứ không ai định sửa. Sự kiện vẫn vào sổ qua
+    # `su_kien.ghi_lo`, nên vẫn đếm được bao nhiêu người vấp và vấp ở màn nào.
+    # Đo prod HTS 27/08: "Không đủ quyền cho Item Price" — 17/27 người mở được mã hàng mà
+    # không được xem giá, và chủ đầu tư CỐ Ý giữ nguyên quyền đó.
+    if _la_chan_da_biet(entry.get("message")):
+        return {"ok": True, "bo_qua": "chan_da_biet"}
 
     # 1) Insert DocType row — flatten the rich blobs into Code (JSON) cells
     # ─── Pointed elements — widget may send either:

@@ -40,6 +40,10 @@ MAC_DINH = {
     "retention_days": 90,
     "digest_hour": 17,
     "redact_keys": "password,pwd,token,secret,api_key,key,pin,otp,csrf",
+    # Những câu CHẶN đã biết là ĐÚNG LUẬT: vẫn ghi vào sổ sự kiện (để còn đếm được ai
+    # đang vấp), nhưng KHÔNG đẻ vé và không bắn Telegram. Mỗi dòng một mẫu, so khớp
+    # không phân biệt hoa thường trên nội dung thông điệp.
+    "khong_de_ve": "",
 }
 
 
