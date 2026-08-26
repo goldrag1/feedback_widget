@@ -31,7 +31,8 @@
   "retention_days",
   "digest_hour",
   "section_rieng_tu",
-  "redact_keys"
+  "redact_keys",
+  "khong_de_ve"
  ],
  "fields": [
   {
@@ -222,11 +223,17 @@
    "fieldname": "redact_keys",
    "fieldtype": "Small Text",
    "label": "Khoá cần che trong tham số"
+  },
+  {
+   "description": "Chặn đúng luật mà đã biết trước: vẫn ghi vào sổ sự kiện để còn đếm được ai vấp, nhưng không tạo vé và không bắn Telegram. So khớp không phân biệt hoa thường.",
+   "fieldname": "khong_de_ve",
+   "fieldtype": "Small Text",
+   "label": "Câu chặn KHÔNG đẻ vé (mỗi dòng một mẫu)"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-26 17:57:43.868637",
+ "modified": "2026-08-27 05:55:00.000000",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Settings",
