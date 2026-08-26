@@ -2039,16 +2039,31 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       } catch (_e) {}
     }
 
+    // Lỗi của TRÌNH DUYỆT NHÚNG, không phải của trang. Trình duyệt trong ứng dụng Zalo
+    // chèn đoạn mã riêng vào mọi trang mở từ Zalo (đường dẫn mang `zarsrc=`), đoạn đó
+    // tham chiếu SDK của họ và ném `zaloJSV2 is not defined` ở dòng 1 — trang vẫn chạy
+    // bình thường. Đo prod HTS 26/08: 2 người khác nhau, mỗi lượt một vé "blocker", trong
+    // khi cùng phiên đó màn giao hàng ghi hàng trăm lượt `ok`. Không sửa được từ phía mình,
+    // nên đừng để nó chiếm chỗ trong hàng đợi vé.
+    _laTiengOnTrinhDuyetNhung(msg, nguon) {
+      const m = String(msg || '');
+      const src = String(nguon || '') + ' ' + (typeof location !== 'undefined' ? location.href : '');
+      if (/zaloJSV2/.test(m)) return true;
+      return /[?&]zarsrc=/.test(src) && /^Uncaught ReferenceError: zalo/i.test(m);
+    }
+
     _hookErrors() {
       window.addEventListener('error', (e) => {
         const m = String((e && e.message) || '');
         if (!m) return;
+        if (this._laTiengOnTrinhDuyetNhung(m, (e && e.filename) || '')) return;
         this.report({ kind: 'loi', message: m + ' @ ' + String((e && e.filename) || '').slice(-80) + ':' + ((e && e.lineno) | 0) });
       });
       window.addEventListener('unhandledrejection', (e) => {
         const r = e && e.reason;
         const m = (r && (r.message || String(r))) || '';
-        if (m) this.report({ kind: 'loi', message: 'Promise: ' + String(m) });
+        if (!m || this._laTiengOnTrinhDuyetNhung(m, '')) return;
+        this.report({ kind: 'loi', message: 'Promise: ' + String(m) });
       });
     }
 
