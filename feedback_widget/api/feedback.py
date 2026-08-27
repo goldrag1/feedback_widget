@@ -19,7 +19,7 @@ import sys
 
 import frappe
 from frappe import _
-from frappe.utils import get_datetime, now_datetime
+from frappe.utils import get_datetime, now_datetime, convert_utc_to_system_timezone
 
 # Make the shared validator importable. The skill lives outside the bench so
 # both standalone HTML demos and this app share the same rules.
@@ -154,14 +154,19 @@ def collect(**kwargs):
         entry["context"] = ctx  # propagate to raw_payload + jsonl below
     # ────────────────────────────────────────────────────────────────────────
 
-    # Widget sends `ts` as ISO 8601 with trailing Z (UTC). MySQL `datetime`
-    # rejects timezone suffix and tz-aware Python datetimes — strip tzinfo so
-    # the value lands as naive local time.
+    # Widget gửi `ts` dạng ISO 8601 kết thúc bằng Z (UTC). MySQL `datetime` từ chối cả hậu
+    # tố múi giờ lẫn datetime tz-aware, nên phải bỏ tzinfo — NHƯNG bỏ suông là GIỮ NGUYÊN
+    # GIỜ UTC, tức lệch đúng bằng offset của site (VN: 7 tiếng) so với `creation`.
+    #
+    # Đo trên prod 27/08/2026: **212/212** vé lệch 420 phút, trong khi `Feedback Event.ts`
+    # thì khớp. Mọi báo cáo đọc `ts` (mục "hồi quy" so `Event.ts` với mốc đóng vé, biểu đồ
+    # theo giờ) đọc lệch cả buổi làm việc — và không có dấu hiệu nào để ai đó nghi ngờ.
+    # Đổi sang giờ hệ thống TRƯỚC khi bỏ tzinfo.
     ts_iso = entry.get("ts") or ""
     try:
         ts_dt = get_datetime(ts_iso) if ts_iso else now_datetime()
         if ts_dt and getattr(ts_dt, "tzinfo", None) is not None:
-            ts_dt = ts_dt.replace(tzinfo=None)
+            ts_dt = convert_utc_to_system_timezone(ts_dt).replace(tzinfo=None)
     except Exception:
         ts_dt = now_datetime()
 

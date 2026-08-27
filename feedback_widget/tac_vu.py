@@ -213,6 +213,13 @@ def bac_cau_error_log():
                 "message": cau,
                 "source": "auto",
                 "submitter": "(máy chủ)",
+                # MỐC PHẢI LÀ LÚC LỖI XẢY RA, không phải lúc cầu chạy. Sổ thô đã làm đúng
+                # (`_ghi_su_kien_nen` ghi `ts = r.creation`) nhưng vé thì `collect` tự đóng
+                # dấu `now()`, nên một site vừa bật cầu sẽ đẻ một loạt vé mang giờ HIỆN TẠI
+                # cho những lỗi đã chết từ lâu. Đo 27/08 trên site demo: lỗi thật lúc
+                # 07:00–07:15, vé ghi 17:15 — tôi đã báo chủ đầu tư "vé vừa lộ lúc 17:15"
+                # và phải đính chính. Người đọc vé không có cách nào biết được sai lệch ấy.
+                "ts": str(r.creation),
                 "tags": {"type": "bug", "severity": "blocker"},
                 # `endpoint` PHẢI có: `collect` tính chữ ký từ (thông điệp, endpoint), nên
                 # thiếu nó thì cầu gom một kiểu còn hộp thư gom một kiểu — một sự cố ra
