@@ -2052,6 +2052,61 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       return /[?&]zarsrc=/.test(src) && /^Uncaught ReferenceError: zalo/i.test(m);
     }
 
+    /** Mô tả một lý do bị từ chối (reason) thành câu ĐỌC ĐƯỢC.
+     *
+     *  Vì sao cần: `String(reason)` cho ra `[object Object]` với mọi lý do không phải Error
+     *  — và Frappe từ chối bằng ĐỐI TƯỢNG THƯỜNG (`{exception, _server_messages}`) hoặc
+     *  jqXHR. Đo prod Tâm Định 27/08: một lượt lỗi của người dùng ghi đúng một dòng
+     *  "Promise: [object Object]", không Error Log máy chủ nào kèm theo, nên không ai biết
+     *  chị ấy vấp cái gì. Một vé không nói được điều gì thì bằng không có vé.
+     */
+    _moTaLyDo(r) {
+      if (r == null) return '';
+      if (typeof r === 'string') return r.slice(0, 500);
+      // 1) câu của máy chủ (Frappe) — ở thân đã bóc HOẶC trong jqXHR
+      const than = (r && r.responseJSON) || r;
+      try {
+        const sm = than && than._server_messages;
+        if (sm) {
+          const arr = JSON.parse(sm);
+          if (arr.length) {
+            const cau = String(JSON.parse(arr[0]).message || '').replace(/<[^>]+>/g, '').trim();
+            if (cau) return cau.slice(0, 500);
+          }
+        }
+      } catch (_e) {}
+      const exc = than && (than.exception || than._error_message);
+      if (exc) return String(exc).replace(/<[^>]+>/g, '').trim().slice(0, 500);
+      // 2) Error thường
+      if (r.message) return String(r.message).slice(0, 500);
+      // 3) jqXHR không thân: nói status, còn hơn ba chữ vô nghĩa
+      if (typeof r.status === 'number' && r.status) {
+        return 'HTTP ' + r.status + (r.statusText ? ' · ' + r.statusText : '');
+      }
+      // 4) đối tượng lạ: in gọn nội dung; cùng lắm là TÊN CÁC KHOÁ — vẫn chẩn đoán được,
+      //    khác hẳn '[object Object]'.
+      try {
+        const j = JSON.stringify(r);
+        if (j && j !== '{}') return j.slice(0, 400);
+        const k = Object.keys(r);
+        if (k.length) return '{' + k.slice(0, 12).join(', ') + '}';
+      } catch (_e) {
+        try {
+          const k = Object.keys(r);
+          if (k.length) return '{' + k.slice(0, 12).join(', ') + '}';
+        } catch (_e2) {}
+      }
+      // `String(r)` NÉM với đối tượng không có nguyên mẫu (`Object.create(null)`):
+      // "Cannot convert object to primitive value" — và một hook bắt lỗi mà tự ném thì
+      // nuốt luôn lỗi gốc. Test `test_mo_ta_ly_do` bắt đúng ca này.
+      try {
+        const s = String(r);
+        return s === '[object Object]' ? '(đối tượng không mô tả được)' : s.slice(0, 300);
+      } catch (_e) {
+        return '(đối tượng không mô tả được)';
+      }
+    }
+
     _hookErrors() {
       window.addEventListener('error', (e) => {
         const m = String((e && e.message) || '');
@@ -2060,10 +2115,9 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         this.report({ kind: 'loi', message: m + ' @ ' + String((e && e.filename) || '').slice(-80) + ':' + ((e && e.lineno) | 0) });
       });
       window.addEventListener('unhandledrejection', (e) => {
-        const r = e && e.reason;
-        const m = (r && (r.message || String(r))) || '';
+        const m = this._moTaLyDo(e && e.reason);
         if (!m || this._laTiengOnTrinhDuyetNhung(m, '')) return;
-        this.report({ kind: 'loi', message: 'Promise: ' + String(m) });
+        this.report({ kind: 'loi', message: 'Promise: ' + m });
       });
     }
 
