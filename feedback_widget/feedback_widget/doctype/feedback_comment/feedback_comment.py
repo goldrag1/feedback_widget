@@ -16,3 +16,16 @@ class FeedbackComment(Document):
             return
         if self.has_value_changed("status") or self.has_value_changed("status_note"):
             self.status_changed_at = now_datetime()
+            # Nhớ TRẠNG THÁI CŨ để `on_update` biết vé vừa được xử lý xong hay chỉ được
+            # sửa vặt: sau khi lưu thì `has_value_changed` không còn trả lời được nữa.
+            self.flags.vua_doi_trang_thai = True
+
+    def on_update(self):
+        # Vé xử lý xong thì người gõ phải biết — đo trên site thật: 74 vé Resolved, 0 lượt
+        # báo ngược. Đặt ở `on_update` chứ không ở script đóng vé: Desk, API và script là
+        # ba đường khác nhau, ba bản chép sẽ trôi lệch ngay lần đầu.
+        if not self.flags.get("vua_doi_trang_thai"):
+            return
+        from feedback_widget.bao_ve_da_xu_ly import thu_bao
+
+        thu_bao(self)

@@ -18,8 +18,13 @@
   "primary_color",
   "column_break_custom",
   "fab_color",
+  "section_khung_gop_y",
+  "hien_tag",
+  "cho_dinh_anh",
+  "giay_tu_dong_dong",
   "section_thu",
   "auto_report",
+  "tu_dong_bao_ve",
   "telegram_first_seen",
   "bridge_error_log",
   "throttle_minutes",
@@ -157,6 +162,13 @@
   },
   {
    "default": "1",
+   "description": "Vé do NGƯỜI gõ, khi chuyển sang Đã xử lý / Không làm, sẽ tự đẩy một thẻ thông báo cho chính người ấy, nội dung là lý do đã ghi. Vé máy không báo.",
+   "fieldname": "tu_dong_bao_ve",
+   "fieldtype": "Check",
+   "label": "Tự báo cho người gõ vé khi vé được xử lý"
+  },
+  {
+   "default": "1",
    "fieldname": "telegram_first_seen",
    "fieldtype": "Check",
    "label": "Đẩy Telegram khi chữ ký xuất hiện LẦN ĐẦU"
@@ -233,7 +245,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-27 05:55:00.000000",
+ "modified": "2026-08-27 17:20:00.000000",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Settings",
