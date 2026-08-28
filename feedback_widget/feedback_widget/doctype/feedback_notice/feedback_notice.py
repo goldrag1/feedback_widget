@@ -46,3 +46,49 @@ class FeedbackNotice(Document):
 		if not self.het_han:
 			# 14 ngày: đủ để người nghỉ phép quay lại vẫn thấy, không đủ lâu để thành rác.
 			self.het_han = add_days(self.bat_dau, 14)
+
+	def on_update(self):
+		"""Báo NGAY cho máy đang mở — chủ đầu tư 28/08: gửi xong người dùng phải thấy,
+		không phải sau khi họ tự tải lại trang.
+
+		Đặt ở `on_update` (Frappe chạy nó cho cả lượt tạo lẫn lượt sửa) chứ không đặt ở
+		script/màn nào tạo thông báo: Desk, `bao_ve_da_xu_ly` và mọi lượt gọi API là ba
+		đường khác nhau, ba bản chép sẽ trôi lệch ngay lần đầu.
+
+		Lỗi ở đây KHÔNG bao giờ được làm hỏng lượt lưu: redis realtime chết thì thông báo
+		vẫn phải lưu được (và trình duyệt vẫn nhặt nó qua nhịp hỏi lại dự phòng).
+		"""
+		if not self._can_day_lai():
+			return
+		try:
+			from feedback_widget.api.thong_bao import day_ngay
+
+			day_ngay(self)
+		except Exception:
+			frappe.log_error(title=f"day thong bao {self.name}", message=frappe.get_traceback())
+
+	def _can_day_lai(self) -> bool:
+		"""Vừa tạo, hay vừa đổi thứ người nhận sẽ THẤY / phạm vi ai được nhận?
+
+		Không bắn lại trên mọi lượt lưu: sửa một dấu phẩy trong `project` mà cả nhà nảy
+		thẻ lần nữa thì cái loa sẽ bị tắt, và lúc đó cái đáng báo cũng chết theo.
+		"""
+		truoc = self.get_doc_before_save()
+		if truoc is None:
+			return True
+		if any(self.has_value_changed(f) for f in TRUONG_DAY_LAI):
+			return True
+		return _nguoi_nhan(self) != _nguoi_nhan(truoc)
+
+
+# Đổi mấy trường này = người nhận thấy khác đi ⇒ đáng bắn lại. `dang_bat` nằm trong đây
+# nên bật lại một thông báo đã tắt cũng tới ngay.
+TRUONG_DAY_LAI = ("tieu_de", "noi_dung", "duong_dan", "pham_vi", "dang_bat", "bat_dau", "het_han")
+
+
+def _nguoi_nhan(doc) -> tuple:
+	"""Cặp (người, vai) đã sắp xếp — dùng để so trước/sau, vì `has_value_changed` không
+	nhìn thấy thay đổi trong bảng con."""
+	nguoi = sorted((r.user or "") for r in (doc.get("cac_nguoi") or []))
+	vai = sorted((r.role or "") for r in (doc.get("cac_vai") or []))
+	return (tuple(nguoi), tuple(vai))

@@ -88,3 +88,42 @@ def dem_da_xem(thong_bao: str) -> dict:
 		"da_xem": frappe.db.count("Feedback Notice Seen", {"thong_bao": thong_bao}),
 		"da_bam": frappe.db.count("Feedback Notice Seen", {"thong_bao": thong_bao, "da_bam": 1}),
 	}
+
+
+# Tên sự kiện realtime — MỘT định nghĩa cho cả hai phía. Bundle nghe đúng chuỗi này và
+# `tests/test_thong_bao_toi_ngay.py` đọc hằng số ở đây rồi soi bundle, nên hai bên không
+# thể trôi lệch trong im lặng (đổi tên ở server mà quên đổi ở JS = thông báo lại chỉ tới
+# sau F5, đúng cái bệnh đang chữa, và KHÔNG có lỗi nào).
+SU_KIEN = "fbw_thong_bao_moi"
+
+
+def day_ngay(doc) -> list:
+	"""Bắn "phao" realtime để trình duyệt đang mở hỏi lại NGAY, không chờ tải lại trang.
+
+	Trả danh sách người đã bắn tới (`["*"]` = phát cho cả nhà) — để test và người vận
+	hành đo được, chứ hàm này cố ý không tự ghi sổ.
+
+	Ba quyết định nằm ở đây:
+
+	1. **Phao KHÔNG mang nội dung.** Phạm vi ai-thấy-gì chỉ có MỘT định nghĩa: câu SQL
+	   trong `_cua_toi`. Thông báo "Nhóm vai"/"Tất cả" phải phát vào phòng chung của
+	   site (Frappe không có phòng theo vai), nên nếu nhét tiêu đề/nội dung vào phao thì
+	   một thông báo riêng cho một người sẽ rò sang mọi máy đang mở. Phao chỉ nói "có
+	   cái mới, hỏi lại đi"; máy chủ vẫn là cổng duy nhất.
+	2. **`after_commit=True`.** Bắn trước khi commit thì trình duyệt hỏi lại kịp trước
+	   lúc dòng có trong CSDL và nhận về rỗng — thông báo lại chỉ tới sau F5, y như cũ.
+	3. **Tắt (`dang_bat = 0`) thì không bắn.** Không có gì để xem.
+	"""
+	if not doc.get("dang_bat"):
+		return []
+	tin = {"co": 1}
+	if doc.get("pham_vi") == "Một người":
+		ai = [r.user for r in (doc.get("cac_nguoi") or []) if getattr(r, "user", None)]
+		for u in ai:
+			frappe.publish_realtime(SU_KIEN, tin, user=u, after_commit=True)
+		return ai
+	# "Nhóm vai" và "Tất cả": phát cho mọi máy đang mở desk. Bên trình duyệt chỉ cập
+	# nhật CHẤM ĐỎ cho hai phạm vi này (luật cũ, giữ nguyên) — người không thuộc phạm vi
+	# hỏi lại và nhận về rỗng, không thấy gì.
+	frappe.publish_realtime(SU_KIEN, tin, after_commit=True)
+	return ["*"]

@@ -187,23 +187,37 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
   }
 
   // ---------- v1.7: lối vào thông báo tính năng ----------
+  // Tên sự kiện realtime PHẢI khớp `feedback_widget.api.thong_bao.SU_KIEN` — một test đọc
+  // hằng số bên Python rồi soi chính tệp này, nên hai bên không thể trôi lệch trong im lặng
+  // (đổi tên một bên = thông báo lại chỉ tới sau F5, đúng bệnh đang chữa, và không có lỗi).
+  var SU_KIEN_THONG_BAO = "fbw_thong_bao_moi";
+  var NHIP_MAT_SOCKET_S = 90;    // socket chết → hỏi lại mỗi 90 giây
+  var NHIP_LUOI_AN_TOAN_S = 900; // socket sống → vẫn hỏi lại 15 phút/lần, phòng khi rơi phao
+  var NHIP_QUAY_LAI_TAB_S = 60;  // quay lại tab sau ≥60 giây → hỏi lại luôn
+
   function dangKyLoiThongBao() {
     // `sanSang` = MÁY CHỦ đã trả lời được, KHÔNG phải "mã vẽ thẻ đã có": hai thứ lên
     // theo hai nhịp khác nhau (phần vẽ nằm trong bundle, endpoint đi theo migrate).
     // Hỏi máy chủ, tối đa 2 lần rồi rút — một tính năng phụ không được quyền đổ
     // traceback 417 vào console của MỌI màn, console đỏ làm người sau bỏ qua cả lỗi thật.
     var chuaXem = 0, daHoi = false, sanSang = false, daDay = {}, soLanLoi = 0;
+    // Mốc lần hỏi gần nhất + cờ đang-hỏi: hai nhịp (phao realtime + nhịp dự phòng) có thể
+    // gọi trùng nhau, không có cờ này thì một thông báo "Tất cả" đẻ ra chùm request.
+    var lanCuoi = 0, dangHoi = false;
     function coVeThe() {
       return !!(window.FeedbackNotices && window.FeedbackNotices.show);
     }
     function dem() {
-      if (!coVeThe() || soLanLoi >= 2) return;
+      if (!coVeThe() || soLanLoi >= 2 || dangHoi) return;
       daHoi = true;
+      dangHoi = true;
       window.frappe.call({
         method: "feedback_widget.api.thong_bao.cua_toi",
-        error: function () { soLanLoi += 1; sanSang = false; },
+        error: function () { dangHoi = false; lanCuoi = Date.now(); soLanLoi += 1; sanSang = false; },
         callback: function (r) {
           var ds = (r && r.message) || [];
+          dangHoi = false;
+          lanCuoi = Date.now();
           sanSang = true;
           chuaXem = ds.length;
           window.__fbw_thong_bao__ = ds;
@@ -248,6 +262,48 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
       },
     });
     dem();
+
+    // ---------- v1.8: thông báo tới NGAY, không chờ tải lại trang ----------
+    // Trước bản này, thông báo chỉ được hỏi đúng MỘT lần mỗi lần tải trang (ở `dem()` phía
+    // trên) — gửi xong thì người dùng phải F5 mới thấy. Hai đường, CẢ HAI đều cần:
+    //   (a) phao realtime của Frappe (socket.io) — tới trong khoảng một giây;
+    //   (b) nhịp hỏi lại dự phòng — socket có thể chết mà trang vẫn chạy bình thường
+    //       (`RealTimeClient` chỉ thử nối lại 3 lần rồi bỏ cuộc, không một dòng lỗi), và
+    //       có site tắt hẳn async. Không có (b) thì "tới ngay" lặng lẽ thành "không bao
+    //       giờ tới" ở đúng chỗ khó phát hiện nhất.
+    function socketSong() {
+      try {
+        var s = window.frappe && window.frappe.realtime && window.frappe.realtime.socket;
+        return !!(s && s.connected);
+      } catch (_e) { return false; }
+    }
+    function ngheRealtime() {
+      try {
+        var rt = window.frappe && window.frappe.realtime;
+        // Site tắt async: `on` không đăng ký gì cả (socket chưa dựng) — vô hại, và nhịp
+        // dự phòng bên dưới vẫn chạy.
+        if (!rt || !rt.on) return false;
+        rt.on(SU_KIEN_THONG_BAO, function () {
+          // Rải 0-1,5 giây: một thông báo "Tất cả" đánh thức MỌI máy đang mở cùng lúc.
+          window.setTimeout(dem, Math.floor(Math.random() * 1500));
+        });
+        return true;
+      } catch (_e) { return false; }
+    }
+    ngheRealtime();
+    try {
+      window.setInterval(function () {
+        // Tab ẩn thì không hỏi: người ta không nhìn, mà thông báo vẫn còn nguyên khi
+        // họ quay lại (máy chủ chỉ bỏ nó đi khi người dùng BẤM).
+        if (document.hidden) return;
+        var cach = (Date.now() - lanCuoi) / 1000;
+        if (cach >= (socketSong() ? NHIP_LUOI_AN_TOAN_S : NHIP_MAT_SOCKET_S)) dem();
+      }, 15000);
+      document.addEventListener("visibilitychange", function () {
+        if (document.hidden) return;
+        if ((Date.now() - lanCuoi) / 1000 >= NHIP_QUAY_LAI_TAB_S) dem();
+      });
+    } catch (_e) {}
   }
 
   // Poll for frappe.boot — desk init is async; bail after 30s of no boot
