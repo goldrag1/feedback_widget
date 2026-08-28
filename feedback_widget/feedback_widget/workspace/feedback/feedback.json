@@ -9,7 +9,7 @@
  "hide_custom": 0,
  "icon": "feedback",
  "idx": 0,
- "is_hidden": 0,
+ "is_hidden": 1,
  "label": "Feedback",
  "links": [
   {
