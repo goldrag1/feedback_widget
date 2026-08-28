@@ -122,7 +122,11 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
  "sequence_id": 90.0,
  "shortcuts": [
   {
@@ -130,24 +134,24 @@
    "doc_view": "",
    "label": "Blockers",
    "link_to": "Blockers",
-   "type": "Report",
-   "report_ref_doctype": "Feedback Event"
+   "report_ref_doctype": "Feedback Event",
+   "type": "Report"
   },
   {
    "color": "Blue",
    "doc_view": "",
    "label": "Screen Behaviour",
    "link_to": "Screen Behaviour",
-   "type": "Report",
-   "report_ref_doctype": "Feedback Event"
+   "report_ref_doctype": "Feedback Event",
+   "type": "Report"
   },
   {
    "color": "Grey",
    "doc_view": "",
    "label": "Unused UI",
    "link_to": "Unused UI",
-   "type": "Report",
-   "report_ref_doctype": "Feedback Manifest Item"
+   "report_ref_doctype": "Feedback Manifest Item",
+   "type": "Report"
   },
   {
    "color": "Green",
