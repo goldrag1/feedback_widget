@@ -8,6 +8,8 @@ KHÔNG phải màn cho người dùng nghiệp vụ soạn tin: quyền tạo gi
 Một cái loa ai cũng bấm được sẽ nhanh chóng thành thứ người ta tắt.
 """
 
+import re
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -18,6 +20,8 @@ class FeedbackNotice(Document):
 	def validate(self):
 		self.tieu_de = (self.tieu_de or "").strip()
 		self.duong_dan = (self.duong_dan or "").strip()
+
+		self._kiem_duong_dan()
 
 		if self.pham_vi == "Một người" and not self.cac_nguoi:
 			frappe.throw(_("Phạm vi 'Một người' phải khai ít nhất một người nhận."))
@@ -46,6 +50,27 @@ class FeedbackNotice(Document):
 		if not self.het_han:
 			# 14 ngày: đủ để người nghỉ phép quay lại vẫn thấy, không đủ lâu để thành rác.
 			self.het_han = add_days(self.bat_dau, 14)
+
+	def _kiem_duong_dan(self):
+		"""Chặn ở ĐƯỜNG GHI những dạng đường dẫn mà thẻ không mở được.
+
+		FB-2026-01430: một thông báo trỏ `/app/misa-nap-cong-ty`; thẻ coi mọi thứ không
+		phải http là hash route của SPA nên URL thành `…#/app/misa-nap-cong-ty`, jQuery
+		đọc chuỗi đó như selector và ném `Syntax error, unrecognized expression`. Thẻ đã
+		được vá để đi `location.href` với `/app|/desk`, nhưng một dạng thứ ba (`viec-cua-toi`
+		thiếu `#/`, `javascript:…`) vẫn im lặng đưa người dùng đi chỗ khác — nên cổng phải
+		có ở CẢ hai đầu, không chỉ ở đường đọc.
+		"""
+		d = self.duong_dan
+		if not d:
+			return
+		if re.match(r"^#/(app|desk)/", d, re.I):
+			frappe.throw(_("Đường dẫn '{0}' trộn hai kiểu. Trang Desk thì viết '{1}', "
+			               "còn '#/…' chỉ dành cho màn trong app.").format(d, d[1:]))
+		if not re.match(r"^(https?://|#/|/)", d, re.I):
+			frappe.throw(_("Đường dẫn '{0}' không mở được: viết 'https://…' cho trang "
+			               "ngoài, '/app/<trang>' cho trang Desk, hoặc '#/<màn>' cho màn "
+			               "trong app.").format(d))
 
 	def on_update(self):
 		"""Báo NGAY cho máy đang mở — chủ đầu tư 28/08: gửi xong người dùng phải thấy,

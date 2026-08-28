@@ -113,11 +113,28 @@
       xem.onclick = function () {
         danhDau(tb.name, true);
         dong();
-        var d = String(tb.duong_dan);
+        var d = String(tb.duong_dan).trim();
         if (/^https?:/i.test(d)) { global.location.href = d; return; }
-        // Đường dẫn trong app là hash route (`#/viec-cua-toi`): gán hash rồi bắn
-        // `hashchange` cho SPA nghe — gán không thôi thì màn đứng im khi đã ở cùng trang.
-        global.location.hash = d.charAt(0) === "#" ? d.slice(1) : d;
+        var coHash = d.charAt(0) === "#";
+        var duoi = coHash ? d.slice(1) : d;
+        // TRANG DESK (`/app/…`, `/desk/…`) KHÔNG phải hash route của SPA. Bản trước ném hết
+        // vào `location.hash` nên URL thành `…#/app/misa-nap-cong-ty`; jQuery đọc chuỗi ấy
+        // như một selector và ném `Syntax error, unrecognized expression` (đo thật trong
+        // trình duyệt 28/08), người bấm đứng nguyên tại chỗ — FB-2026-01430, và đó là lượt
+        // bấm DUY NHẤT trong 14 thẻ có lượt xem, hỏng 1/1. Bắt luôn dạng lai `#/app/…`.
+        // Máy chủ tự 301 `/app/…` sang `/desk/…` nên gán `href` là đủ.
+        if (/^\/(app|desk)\//i.test(duoi)) { global.location.href = duoi; return; }
+        // Có `#` mà không phải trang Desk ⇒ màn trong app: gán hash rồi bắn `hashchange`
+        // cho SPA nghe — gán không thôi thì màn đứng im khi đã ở cùng trang.
+        if (coHash) {
+          global.location.hash = duoi;
+          try { global.dispatchEvent(new HashChangeEvent("hashchange")); } catch (_e) {}
+          return;
+        }
+        // Không `#` mà mở đầu bằng `/` là đường của MÁY CHỦ — đúng luật mà đường ghi
+        // (`feedback_notice._kiem_duong_dan`) bắt; ném nó vào hash là tái diễn cùng cái bẫy.
+        if (duoi.charAt(0) === "/") { global.location.href = duoi; return; }
+        global.location.hash = duoi;
         try { global.dispatchEvent(new HashChangeEvent("hashchange")); } catch (_e) {}
       };
       hang.appendChild(xem);

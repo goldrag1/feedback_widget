@@ -11,6 +11,13 @@ và người gửi tưởng đã báo rồi. Ba tính chất khoá ở đây, m�
     của một người sang mọi máy đang mở.
  3. **Hai bên gọi CÙNG một tên sự kiện, và vẫn còn đường lui khi socket chết** — đổi tên một
     bên, hoặc bỏ nhịp hỏi lại, đều đưa tính năng về đúng cái bệnh nó chữa mà không ai thấy.
+ 5. **Nút "Xem thử →" phải đi ĐÚNG KIỂU đường dẫn.** FB-2026-01430: thẻ coi mọi link không
+    phải http là hash route của SPA, nên một thông báo trỏ trang Desk `/app/misa-nap-cong-ty`
+    làm URL thành `…#/app/misa-nap-cong-ty`; jQuery đọc chuỗi ấy như selector và ném
+    `Syntax error, unrecognized expression`, người bấm đứng nguyên tại chỗ. Đo trên prod
+    28/08: 19 thông báo, 14 thẻ có lượt xem, đúng MỘT lượt bấm — và nó rơi vào cái hỏng
+    (1/1). Khoá cả hai đầu: thẻ chọn đúng nhánh, và đường GHI chặn dạng không mở được.
+
  4. **Cắm tai nghe phải THỬ LẠI tới khi socket có thật, và chỉ cắm MỘT lần.** Bản 28/08 đo
     trên prod: `frappe.realtime.on` đã là hàm ở giây 1,95 nên widget gọi `on()` ở giây 2,60
     và tưởng xong, trong khi socket mãi giây 3,13 mới dựng — `RealTimeClient.on()` là
@@ -40,6 +47,7 @@ _GOC_APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BENCH_ROOT = os.path.abspath(os.path.join(_GOC_APP, "..", "..", ".."))
 SITES_PATH = os.path.join(BENCH_ROOT, "sites")
 BUNDLE = os.path.join(_GOC_APP, "public", "js", "feedback_widget.bundle.js")
+THE = os.path.join(_GOC_APP, "public", "js", "thong_bao_the.js")
 
 
 def _site() -> str:
@@ -167,15 +175,15 @@ class TestThongBaoToiNgay(unittest.TestCase):
 		with open(BUNDLE, encoding="utf-8") as fh:
 			return re.sub(r"\s+", " ", fh.read())
 
-	def _khoi_ham(self, ten: str) -> str:
+	def _khoi_ham(self, ten: str, tep: str = "", neo: str = "") -> str:
 		"""Cắt nguyên thân một hàm khỏi bundle bằng cách ĐẾM NGOẶC (không regex `.*?`).
 
 		Cần bản gốc còn xuống dòng để chạy thật bằng node, nên đọc thẳng tệp chứ không
 		dùng `_bundle()` (hàm kia ép mọi khoảng trắng về một dấu cách).
 		"""
-		with open(BUNDLE, encoding="utf-8") as fh:
+		with open(tep or BUNDLE, encoding="utf-8") as fh:
 			src = fh.read()
-		i = src.index(f"function {ten}(")
+		i = src.index(neo or f"function {ten}(")
 		j = src.index("{", i)
 		sau = 0
 		for k in range(j, len(src)):
@@ -186,6 +194,11 @@ class TestThongBaoToiNgay(unittest.TestCase):
 				if sau == 0:
 					return src[i:k + 1]
 		raise AssertionError(f"không cắt được thân hàm {ten}() — ngoặc không cân")
+
+	def _than_onclick(self) -> str:
+		"""Ruột nút 'Xem thử →' — cắt để CHẠY THẬT, chứ không đọc bằng mắt."""
+		khoi = self._khoi_ham("", tep=THE, neo="xem.onclick = function () {")
+		return khoi[khoi.index("{") + 1:khoi.rindex("}")]
 
 	def test_js_nghe_dung_ten_su_kien_cua_may_chu(self):
 		from feedback_widget.api.thong_bao import SU_KIEN
@@ -301,6 +314,91 @@ class TestThongBaoToiNgay(unittest.TestCase):
 		self.assertRegex(src, r"socketSong\(\)\s*\?\s*NHIP_LUOI_AN_TOAN_S\s*:\s*NHIP_MAT_SOCKET_S",
 		                 "nhịp phải phụ thuộc socket còn sống hay không")
 		self.assertIn("document.hidden", src, "tab ẩn thì đừng hỏi máy chủ")
+
+
+	# --- 5. nút "Xem thử →" đi đúng kiểu đường dẫn (FB-2026-01430) ---
+
+	@unittest.skipUnless(shutil.which("node"), "không có node để chạy thật đoạn JS")
+	def test_js_link_trang_desk_di_href_con_man_trong_app_di_hash(self):
+		"""CHẠY THẬT ruột nút 'Xem thử →' với 6 dạng đường dẫn, đo `href`/`hash` thu được.
+
+		Đọc mã không phân biệt được `location.hash = "/app/x"` với một điều hướng thật —
+		mà đó đúng là chỗ hỏng: URL thành `#/app/x`, jQuery ném `Syntax error,
+		unrecognized expression`, và người bấm không đi đâu cả.
+		"""
+		harness = """
+		var goiDanhDau = 0;
+		function danhDau() { goiDanhDau += 1; }
+		function dong() {}
+		function HashChangeEvent() {}
+		var global = { location: { href: "", hash: "" }, dispatchEvent: function () {} };
+		function di(duongDan) {
+			global.location = { href: "", hash: "" };
+			var tb = { name: "TB-THU", duong_dan: duongDan };
+			(function () { %(than)s })();
+			return { href: global.location.href, hash: global.location.hash };
+		}
+		var kq = {};
+		[["ngoai", "https://vanban.gov.vn/a"],
+		 ["desk_app", "/app/misa-nap-cong-ty"],
+		 ["desk_desk", "/desk/misa-nap-cong-ty"],
+		 ["lai", "#/app/misa-nap-cong-ty"],
+		 ["man_spa", "#/viec-cua-toi"],
+		 ["co_khoang_trang", "  /app/misa-nap-cong-ty  "],
+		 ["trang_khac", "/portal-x"]].forEach(function (c) {
+			kq[c[0]] = di(c[1]);
+		});
+		kq.danh_dau = goiDanhDau;
+		console.log(JSON.stringify(kq));
+		""" % {"than": self._than_onclick()}
+
+		with tempfile.TemporaryDirectory() as d:
+			f = os.path.join(d, "thu_link.cjs")
+			with open(f, "w", encoding="utf-8") as fh:
+				fh.write(harness)
+			r = subprocess.run(["node", f], capture_output=True, text=True, timeout=60)
+		self.assertEqual(r.returncode, 0, f"node chạy hỏng: {r.stderr[-800:]}")
+		kq = json.loads(r.stdout.strip().splitlines()[-1])
+
+		self.assertEqual(kq["ngoai"]["href"], "https://vanban.gov.vn/a", "link ngoài phải đi href")
+		for ten, mong in (("desk_app", "/app/misa-nap-cong-ty"),
+		                  ("desk_desk", "/desk/misa-nap-cong-ty"),
+		                  ("lai", "/app/misa-nap-cong-ty"),
+		                  ("co_khoang_trang", "/app/misa-nap-cong-ty"),
+		                  ("trang_khac", "/portal-x")):
+			self.assertEqual(kq[ten]["href"], mong,
+			                 f"'{ten}' phải điều hướng thẳng tới {mong} (máy chủ tự 301 "
+			                 "sang /desk/…), đây là ca FB-2026-01430")
+			self.assertEqual(kq[ten]["hash"], "",
+			                 f"'{ten}' mà rơi vào `location.hash` là tái hiện đúng lỗi cũ: "
+			                 "URL thành '#/app/…' và jQuery ném Syntax error")
+		self.assertEqual(kq["man_spa"]["hash"], "/viec-cua-toi",
+		                 "màn trong app vẫn phải đi bằng hash route như trước")
+		self.assertEqual(kq["man_spa"]["href"], "", "màn trong app không được tải lại cả trang")
+		self.assertEqual(kq["danh_dau"], 7, "mỗi lượt bấm vẫn phải ghi 'đã bấm' — 0 lượt bấm "
+		                 "là số đo duy nhất nói thẻ có tới đúng người không")
+
+	def test_validate_chan_duong_dan_khong_mo_duoc(self):
+		def tao(dd):
+			return frappe.get_doc({
+				"doctype": "Feedback Notice", "tieu_de": "THU-NGAY-duong-dan",
+				"noi_dung": "Kiểm cổng đường dẫn.", "duong_dan": dd,
+				"pham_vi": "Một người", "dang_bat": 1,
+				"cac_nguoi": [{"user": NGUOI_A}],
+			}).insert(ignore_permissions=True)
+
+		with self.assertRaises(frappe.ValidationError) as e:
+			tao("#/app/misa-nap-cong-ty")
+		self.assertIn("/app/misa-nap-cong-ty", str(e.exception),
+		              "câu chặn phải NÓI RA dạng đúng, không chỉ báo sai")
+		for xau in ("viec-cua-toi", "javascript:alert(1)", "app/misa-nap-cong-ty"):
+			with self.assertRaises(frappe.ValidationError, msg=f"'{xau}' phải bị chặn"):
+				tao(xau)
+		# Ba dạng hợp lệ phải lưu được — cổng chặn quá tay thì người soạn không gửi được gì.
+		for tot in ("#/viec-cua-toi", "/app/misa-nap-cong-ty", "https://vanban.gov.vn/a", ""):
+			d = tao(tot)
+			self.assertEqual(d.duong_dan, tot.strip(), f"'{tot}' phải lưu được nguyên vẹn")
+
 
 
 if __name__ == "__main__":
