@@ -2049,6 +2049,12 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
       const m = String(msg || '');
       const src = String(nguon || '') + ' ' + (typeof location !== 'undefined' ? location.href : '');
       if (/zaloJSV2/.test(m)) return true;
+      // `ResizeObserver loop …` KHÔNG phải lỗi: trình duyệt bắn nó khi vòng đo kích thước
+      // chưa kịp xong trong một khung hình, rồi tự chạy tiếp ở khung sau. Không có gì hỏng,
+      // không ai mất thao tác — nhưng nó vào sổ như một "blocker" và đẻ vé. Đo 28/08: site
+      // demo có 1 vé loại này của tài khoản giám đốc (3 site còn lại: 0). Một vé không nói
+      // được điều gì để sửa là vé làm loãng hàng đợi — chặn ngay từ đây.
+      if (/^(Uncaught )?ResizeObserver loop /i.test(m)) return true;
       return /[?&]zarsrc=/.test(src) && /^Uncaught ReferenceError: zalo/i.test(m);
     }
 
