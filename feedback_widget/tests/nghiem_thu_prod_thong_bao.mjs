@@ -1,6 +1,7 @@
 /**
- * Nghiệm thu TRÊN PROD: widget có tự cắm tai nghe realtime không, và thẻ thông báo hiện
- * sau bao nhiêu giây — đo bằng trình duyệt thật, KHÔNG tự cắm thêm tai nghe nào.
+ * Nghiệm thu TRÊN PROD ba việc, bằng trình duyệt thật và KHÔNG tự cắm thêm tai nghe nào:
+ * widget có tự cắm tai nghe realtime không · thẻ hiện sau bao nhiêu giây · bấm "Xem thử →"
+ * trên thẻ trỏ TRANG DESK có đi đúng chỗ không (FB-2026-01430).
  *
  * Vì sao cần: bản 27/08 xanh mọi test mà trên prod `listeners("fbw_thong_bao_moi")` = 0
  * (widget gọi `frappe.realtime.on()` ở giây 2,6 trong khi socket mãi giây 3,1 mới dựng,
@@ -76,6 +77,7 @@ import frappe
 d = frappe.get_doc({"doctype": "Feedback Notice",
     "tieu_de": ${JSON.stringify(TIEU_DE)},
     "noi_dung": "Phép đo tự động — không phải thông báo thật.",
+    "duong_dan": "/app/feedback-notice",
     "pham_vi": "Một người", "dang_bat": 1,
     "cac_nguoi": [{"user": "Administrator"}]}).insert(ignore_permissions=True)
 frappe.db.commit()
@@ -89,6 +91,22 @@ print("TB:" + d.name)
     .catch(() => { hienRa = false; });
   kq.the_hien_ra = hienRa;
   kq.giay_tu_luc_tao_den_luc_the_hien = hienRa ? ((Date.now() - tTao) / 1000).toFixed(1) : "KHÔNG HIỆN";
+
+  // 3) FB-2026-01430: thẻ trỏ TRANG DESK bấm vào phải đi thật. Trước bản 28/08 nó gán
+  // `location.hash` nên URL thành `…#/app/…`, jQuery ném `Syntax error, unrecognized
+  // expression` và người bấm đứng nguyên chỗ cũ — đo trên prod: 1/1 lượt bấm hỏng.
+  if (hienRa) {
+    try {
+      await page.click(`#fbw-thong-bao-lop [data-tb="${tenTB}"] button:has-text("Xem thử")`);
+      await page.waitForURL(/\/(app|desk)\/feedback-notice/, { timeout: 30000 }).catch(() => {});
+      kq.url_sau_khi_bam = page.url();
+      kq.bam_di_dung_cho = /\/(app|desk)\/feedback-notice/.test(page.url())
+        && !/#\/app\//.test(page.url());
+    } catch (e) {
+      kq.url_sau_khi_bam = "lỗi khi bấm: " + e.message;
+      kq.bam_di_dung_cho = false;
+    }
+  }
   kq.loi_console = loi.length;
 } finally {
   if (tenTB) {
@@ -108,6 +126,6 @@ print("CON_LAI:", frappe.db.count("Feedback Notice", {"tieu_de": ${JSON.stringif
 
 console.log(JSON.stringify(kq, null, 2));
 if (loi.length) console.log("lỗi trình duyệt:", loi.slice(0, 5));
-const dat = kq.so_tai_nghe >= 1 && kq.the_hien_ra === true;
-console.log(dat ? "ĐẠT — widget tự cắm tai nghe và thẻ tới ngay" : "KHÔNG ĐẠT — xem số ở trên");
+const dat = kq.so_tai_nghe >= 1 && kq.the_hien_ra === true && kq.bam_di_dung_cho === true;
+console.log(dat ? "ĐẠT — widget tự cắm tai nghe, thẻ tới ngay, bấm đi đúng trang" : "KHÔNG ĐẠT — xem số ở trên");
 process.exit(dat ? 0 : 1);
