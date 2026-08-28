@@ -194,6 +194,14 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
   var NHIP_MAT_SOCKET_S = 90;    // socket chết → hỏi lại mỗi 90 giây
   var NHIP_LUOI_AN_TOAN_S = 900; // socket sống → vẫn hỏi lại 15 phút/lần, phòng khi rơi phao
   var NHIP_QUAY_LAI_TAB_S = 60;  // quay lại tab sau ≥60 giây → hỏi lại luôn
+  // Cắm tai nghe realtime phải THỬ LẠI: `frappe.realtime` (và cả `.on`) có mặt SỚM HƠN cái
+  // socket nó ghi vào — đo trên prod 28/08: `frappe.realtime.on` có ở giây 1,95, widget gọi
+  // `on()` ở giây 2,60, socket mãi giây 3,13 mới dựng xong. `RealTimeClient.on()` của Frappe
+  // là `if (this.socket) { … }`: KHÔNG có socket thì nó lặng lẽ không đăng ký gì, không ném
+  // lỗi, không trả giá trị nào — nên bản trước tưởng cắm được rồi và không bao giờ thử lại
+  // (đo: `socket.listeners("fbw_thong_bao_moi").length` = 0 trên mọi máy đang mở).
+  var NHIP_THU_NGHE_MS = 500;    // 500ms × 120 = 60 giây, thừa sức cho máy xưởng chậm
+  var SO_LAN_THU_NGHE = 120;
 
   function dangKyLoiThongBao() {
     // `sanSang` = MÁY CHỦ đã trả lời được, KHÔNG phải "mã vẽ thẻ đã có": hai thứ lên
@@ -277,22 +285,52 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
         return !!(s && s.connected);
       } catch (_e) { return false; }
     }
+    // Chốt chống đăng ký hai lần: giữ CHÍNH cái socket đã cắm, không giữ một cờ boolean —
+    // cờ boolean không phân biệt được "đã cắm rồi" với "socket đã bị thay". Cắm trùng thì
+    // mỗi phao đẻ ra N lượt hỏi máy chủ và N chồng thẻ.
+    var socketDangNghe = null;
     function ngheRealtime() {
       try {
         var rt = window.frappe && window.frappe.realtime;
-        // Site tắt async: `on` không đăng ký gì cả (socket chưa dựng) — vô hại, và nhịp
-        // dự phòng bên dưới vẫn chạy.
-        if (!rt || !rt.on) return false;
+        if (!rt || typeof rt.on !== "function") return false;
+        // ĐIỀU KIỆN THẬT là `rt.socket`, không phải `rt.on`: `on()` chỉ đăng ký khi socket
+        // đã dựng, còn không thì nó im lặng bỏ qua. Site tắt async (`boot.disable_async`)
+        // thì socket KHÔNG BAO GIỜ có — vòng thử lại tự hết hạn và nhịp hỏi lại dự phòng
+        // bên dưới gánh, đúng như trước.
+        var s = rt.socket;
+        if (!s) return false;
+        if (socketDangNghe === s) return true;   // đã cắm đúng socket này rồi
+        socketDangNghe = s;
         rt.on(SU_KIEN_THONG_BAO, function () {
           // Rải 0-1,5 giây: một thông báo "Tất cả" đánh thức MỌI máy đang mở cùng lúc.
           window.setTimeout(dem, Math.floor(Math.random() * 1500));
         });
+        // Socket rớt rồi nối lại: tai nghe socket.io còn nguyên (cùng một đối tượng
+        // `Socket`), nhưng phao bắn TRONG lúc rớt thì mất hẳn — hỏi lại một nhịp khi nối
+        // lại. Cắm trong nhánh đã chống trùng nên không đẻ thêm tai nghe `connect`.
+        if (typeof s.on === "function") {
+          s.on("connect", function () { window.setTimeout(dem, 500); });
+        }
         return true;
       } catch (_e) { return false; }
     }
-    ngheRealtime();
+    if (!ngheRealtime()) {
+      // Chưa cắm được thì thử lại theo nhịp ngắn, có TRẦN: một tính năng phụ không được
+      // quyền để lại một `setInterval` chạy mãi trên mọi màn.
+      try {
+        var lanThuNghe = 0;
+        var nhipNghe = window.setInterval(function () {
+          lanThuNghe += 1;
+          if (ngheRealtime() || lanThuNghe >= SO_LAN_THU_NGHE) window.clearInterval(nhipNghe);
+        }, NHIP_THU_NGHE_MS);
+      } catch (_e) {}
+    }
     try {
       window.setInterval(function () {
+        // Vòng thử lại phía trên có trần 60 giây; nhịp này gánh nốt hai ca hiếm: socket
+        // dựng muộn hơn thế, và socket bị thay bằng đối tượng khác. Hàm đã chống trùng
+        // nên gọi lại là vô hại.
+        ngheRealtime();
         // Tab ẩn thì không hỏi: người ta không nhìn, mà thông báo vẫn còn nguyên khi
         // họ quay lại (máy chủ chỉ bỏ nó đi khi người dùng BẤM).
         if (document.hidden) return;

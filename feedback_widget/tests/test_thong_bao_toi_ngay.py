@@ -11,6 +11,13 @@ và người gửi tưởng đã báo rồi. Ba tính chất khoá ở đây, m�
     của một người sang mọi máy đang mở.
  3. **Hai bên gọi CÙNG một tên sự kiện, và vẫn còn đường lui khi socket chết** — đổi tên một
     bên, hoặc bỏ nhịp hỏi lại, đều đưa tính năng về đúng cái bệnh nó chữa mà không ai thấy.
+ 4. **Cắm tai nghe phải THỬ LẠI tới khi socket có thật, và chỉ cắm MỘT lần.** Bản 28/08 đo
+    trên prod: `frappe.realtime.on` đã là hàm ở giây 1,95 nên widget gọi `on()` ở giây 2,60
+    và tưởng xong, trong khi socket mãi giây 3,13 mới dựng — `RealTimeClient.on()` là
+    `if (this.socket) {…}` nên nó KHÔNG đăng ký gì, không ném lỗi, không trả gì. Kết quả đo
+    được: `socket.listeners("fbw_thong_bao_moi").length` = 0 trên máy đang mở, thẻ chỉ hiện
+    sau F5 — đúng cái bệnh mục 1-3 tưởng đã chữa. Ca dưới CHẠY THẬT hàm đó bằng node với
+    một `RealTimeClient` giả mang đúng ngữ nghĩa ấy, thay vì tin vào mắt đọc mã.
 
 Chạy:
   cd <gốc bench> && env/bin/python -m unittest feedback_widget.tests.test_thong_bao_toi_ngay
@@ -19,6 +26,9 @@ Chạy:
 import json
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 
 import frappe
@@ -157,6 +167,26 @@ class TestThongBaoToiNgay(unittest.TestCase):
 		with open(BUNDLE, encoding="utf-8") as fh:
 			return re.sub(r"\s+", " ", fh.read())
 
+	def _khoi_ham(self, ten: str) -> str:
+		"""Cắt nguyên thân một hàm khỏi bundle bằng cách ĐẾM NGOẶC (không regex `.*?`).
+
+		Cần bản gốc còn xuống dòng để chạy thật bằng node, nên đọc thẳng tệp chứ không
+		dùng `_bundle()` (hàm kia ép mọi khoảng trắng về một dấu cách).
+		"""
+		with open(BUNDLE, encoding="utf-8") as fh:
+			src = fh.read()
+		i = src.index(f"function {ten}(")
+		j = src.index("{", i)
+		sau = 0
+		for k in range(j, len(src)):
+			if src[k] == "{":
+				sau += 1
+			elif src[k] == "}":
+				sau -= 1
+				if sau == 0:
+					return src[i:k + 1]
+		raise AssertionError(f"không cắt được thân hàm {ten}() — ngoặc không cân")
+
 	def test_js_nghe_dung_ten_su_kien_cua_may_chu(self):
 		from feedback_widget.api.thong_bao import SU_KIEN
 
@@ -166,11 +196,101 @@ class TestThongBaoToiNgay(unittest.TestCase):
 		                 "một bên là máy chủ bắn vào chỗ không ai nghe, không lỗi nào để lần ra")
 		# Người nghe phải là REALTIME, và phải được NỐI DÂY: một hàm nghe khai xong mà
 		# không ai gọi thì test vẫn xanh còn tính năng thì chết (lớp lỗi "0 chỗ gọi").
-		than = re.search(r"function ngheRealtime\(\) \{.*?\n?\s*\}\s*ngheRealtime\(\);", src)
-		self.assertIsNotNone(than, "không thấy `ngheRealtime()` được khai VÀ được gọi")
-		self.assertIn("frappe.realtime", than.group(0), "phải nghe qua `frappe.realtime`")
-		self.assertRegex(than.group(0), r"\.on\(\s*SU_KIEN_THONG_BAO",
+		than = self._khoi_ham("ngheRealtime")
+		self.assertIn("frappe.realtime", than, "phải nghe qua `frappe.realtime`")
+		self.assertRegex(than, r"\.on\(\s*SU_KIEN_THONG_BAO",
 		                 "phải đăng ký `.on(SU_KIEN_THONG_BAO, …)`")
+		goi = [m for m in re.finditer(r"(?<!function )\bngheRealtime\(\)", src)]
+		self.assertGreaterEqual(len(goi), 1, "hàm nghe khai xong mà KHÔNG ai gọi")
+
+	def test_js_co_vong_thu_lai_co_tran_khi_socket_chua_dung(self):
+		"""Cắm hụt một lần rồi thôi chính là lỗi đo được trên prod 28/08 (0 tai nghe)."""
+		src = self._bundle()
+		self.assertRegex(src, r"if \(!ngheRealtime\(\)\) \{",
+		                 "phải có nhánh 'cắm chưa được thì thử lại' — `on()` của Frappe im "
+		                 "lặng khi socket chưa dựng, gọi một lần rồi thôi là không bao giờ nghe")
+		self.assertRegex(src, r"setInterval\(function \(\) \{ lanThuNghe \+= 1;",
+		                 "vòng thử lại phải chạy theo nhịp `setInterval`")
+		self.assertRegex(src, r"lanThuNghe >= SO_LAN_THU_NGHE\) window\.clearInterval",
+		                 "vòng thử lại phải có TRẦN và tự dọn — site tắt async thì socket "
+		                 "không bao giờ có, để nó chạy mãi là rác trên mọi màn")
+		self.assertRegex(src, r"SO_LAN_THU_NGHE\s*=\s*(\d+)", "thiếu khai số lần thử")
+		so_lan = int(re.search(r"SO_LAN_THU_NGHE\s*=\s*(\d+)", src).group(1))
+		nhip = int(re.search(r"NHIP_THU_NGHE_MS\s*=\s*(\d+)", src).group(1))
+		self.assertGreaterEqual(so_lan * nhip, 30000,
+		                        "cửa sổ thử lại phải ≥30 giây: đo trên prod socket dựng ở "
+		                        "giây 3,1 với máy nhanh, máy xưởng chậm hơn nhiều")
+
+	@unittest.skipUnless(shutil.which("node"), "không có node để chạy thật đoạn JS")
+	def test_js_cam_dung_mot_lan_khi_socket_toi_va_hoi_lai_khi_noi_lai(self):
+		"""CHẠY THẬT `ngheRealtime()` bằng node với `RealTimeClient` giả đúng ngữ nghĩa.
+
+		Đọc mã không phân biệt được "đã đăng ký" với "gọi `on()` vào chỗ trống": chính chỗ
+		đó làm bản trước chết câm. Bốn tính chất đo bằng số tai nghe THẬT trên socket giả.
+		"""
+		from feedback_widget.api.thong_bao import SU_KIEN
+
+		harness = """
+		var demSoLan = 0;
+		function dem() { demSoLan += 1; }
+		var SU_KIEN_THONG_BAO = %(su_kien)s;
+		function socketGia() {
+			var ev = {};
+			return { connected: true,
+			         on: function (n, cb) { (ev[n] = ev[n] || []).push(cb); },
+			         listeners: function (n) { return ev[n] || []; } };
+		}
+		// Bản sao ngữ nghĩa `RealTimeClient.on` của Frappe v16 (socketio_client.js):
+		// KHÔNG có socket ⇒ im lặng không đăng ký gì, không lỗi, không trả gì.
+		var rt = { socket: null,
+		           on: function (n, cb) { if (this.socket) { this.socket.on(n, cb); } } };
+		var hen = 0;
+		global.window = { frappe: { realtime: rt },
+		                  setTimeout: function (f) { hen += 1; f(); } };
+		%(ma)s
+		var kq = { chua_co_socket: ngheRealtime(), nghe_khi_chua_co_socket: 0 };
+		rt.socket = socketGia();
+		kq.khi_socket_toi = ngheRealtime();
+		kq.nghe_sau_khi_toi = rt.socket.listeners(SU_KIEN_THONG_BAO).length;
+		for (var i = 0; i < 10; i++) { ngheRealtime(); }
+		kq.nghe_sau_10_lan_goi_lai = rt.socket.listeners(SU_KIEN_THONG_BAO).length;
+		kq.connect_sau_10_lan_goi_lai = rt.socket.listeners("connect").length;
+		demSoLan = 0;
+		rt.socket.listeners("connect").forEach(function (f) { f(); });
+		kq.hoi_lai_khi_noi_lai = demSoLan;
+		var cu = rt.socket;
+		rt.socket = socketGia();
+		kq.doi_socket = ngheRealtime();
+		kq.nghe_tren_socket_moi = rt.socket.listeners(SU_KIEN_THONG_BAO).length;
+		kq.nghe_tren_socket_cu = cu.listeners(SU_KIEN_THONG_BAO).length;
+		console.log(JSON.stringify(kq));
+		""" % {"su_kien": json.dumps(SU_KIEN),
+		       "ma": "var socketDangNghe = null;\n" + self._khoi_ham("ngheRealtime")}
+
+		with tempfile.TemporaryDirectory() as d:
+			f = os.path.join(d, "thu_nghe.cjs")
+			with open(f, "w", encoding="utf-8") as fh:
+				fh.write(harness)
+			r = subprocess.run(["node", f], capture_output=True, text=True, timeout=60)
+		self.assertEqual(r.returncode, 0, f"node chạy hỏng: {r.stderr[-800:]}")
+		kq = json.loads(r.stdout.strip().splitlines()[-1])
+
+		self.assertFalse(kq["chua_co_socket"],
+		                 "socket chưa dựng mà báo 'đã cắm' = vòng thử lại dừng sớm, và đó "
+		                 "chính là lỗi prod: 0 tai nghe, không lỗi nào")
+		self.assertTrue(kq["khi_socket_toi"], "socket có rồi mà vẫn không cắm được")
+		self.assertEqual(kq["nghe_sau_khi_toi"], 1, "phải cắm đúng một tai nghe")
+		self.assertEqual(kq["nghe_sau_10_lan_goi_lai"], 1,
+		                 "gọi lại 10 lần vẫn phải là 1 tai nghe — cắm trùng thì mỗi phao đẻ "
+		                 "N lượt hỏi máy chủ và N chồng thẻ")
+		self.assertEqual(kq["connect_sau_10_lan_goi_lai"], 1,
+		                 "tai nghe 'connect' cũng phải chống trùng")
+		self.assertGreaterEqual(kq["hoi_lai_khi_noi_lai"], 1,
+		                        "socket nối lại phải hỏi lại một nhịp: phao bắn trong lúc "
+		                        "rớt mất hẳn, không ai gửi lại")
+		self.assertEqual(kq["nghe_tren_socket_moi"], 1,
+		                 "socket bị thay thì phải cắm sang cái mới")
+		self.assertEqual(kq["nghe_tren_socket_cu"], 1, "không được cắm thêm vào socket cũ")
 
 	def test_js_con_duong_lui_khi_socket_chet(self):
 		src = self._bundle()
