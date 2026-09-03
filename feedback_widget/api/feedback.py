@@ -76,6 +76,32 @@ def _jsonl_path(project: str) -> pathlib.Path:
     return pathlib.Path(frappe.get_site_path("private", "feedback", f"{safe}.jsonl"))
 
 
+def _nguoi_thay_mat(payload) -> str | None:
+    """Danh tính người THẬT khi máy chủ ghi vé HỘ họ (cầu Error Log · khai thác lịch sử).
+
+    VÌ SAO: việc nền chạy dưới Administrator, nên `frappe.session.user` ở đây là
+    Administrator chứ không phải người vấp lỗi. Đo prod 03/09/2026: vé máy sinh từ
+    Error Log ghi `submitter_user = Administrator` trong khi chủ dòng log là người thật
+    (FB-2026-01571/01572 ← bien.quandoc@ducan.local), tức mọi câu "ai đang bị chặn" gọi
+    nhầm tên người — và không có dấu hiệu nào để người đọc nghi ngờ.
+
+    Chỉ nhận khai hộ khi lượt gọi KHÔNG phải HTTP (việc nền, `bench execute`) hoặc người
+    gọi là System Manager. Trình duyệt của người dùng thường gửi lên thì bị BỎ QUA, nên
+    ô này không mở đường giả mạo danh tính — quy tắc "không tin dữ liệu từ máy khách"
+    của `collect` giữ nguyên.
+    """
+    nguoi = str((payload or {}).get("nguoi_thay_mat") or "").strip()
+    if not nguoi:
+        return None
+    if getattr(frappe.local, "request", None) is not None:
+        if "System Manager" not in (frappe.get_roles() or []):
+            return None
+    # Người đã bị xoá khỏi bảng User: đừng ghi tên ma vào cột Link — vé sẽ không mở được.
+    if not frappe.db.exists("User", nguoi):
+        return None
+    return nguoi
+
+
 def _la_chan_da_biet(thong_diep: str) -> bool:
     """Thông điệp này có nằm trong danh sách "chặn đúng luật, đừng đẻ vé" không.
 
@@ -134,7 +160,9 @@ def collect(**kwargs):
     # Never trust client-supplied user/role data — re-derive from session.
     # The widget DOES collect these in ctx.app for HTML-mockup parity, but
     # for Frappe we overwrite them so a malicious client cannot impersonate.
-    session_user = frappe.session.user
+    # `nguoi_thay_mat` chỉ đổi DANH TÍNH ghi vào vé; quyền vẫn chạy dưới phiên thật
+    # (Administrator ở đường việc nền), nên không có ca "vé mất vì người ấy thiếu quyền".
+    session_user = _nguoi_thay_mat(payload) or frappe.session.user
     is_authed = session_user and session_user != "Guest"
     user_full_name = None
     user_roles_csv = None

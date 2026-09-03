@@ -41,6 +41,32 @@ def _dang_ngoai_le(cau: str) -> bool:
     return bool(_NGOAI_LE.match(cau or "")) or bool(_tinh_dau_hieu(cau or ""))
 
 
+def _chu_dong_log(owner: str) -> str:
+    """Người THẬT của một dòng Error Log — `owner` của chính dòng ấy, không phải phiên đang chạy.
+
+    Cầu chạy trong việc nền dưới Administrator, nên lấy `frappe.session.user` là gọi nhầm
+    tên người ở MỌI vé máy. Đo prod 03/09/2026: FB-2026-01571/01572 (ducan) và
+    FB-2026-00030 (tamdinh) đều ghi Administrator trong khi chủ dòng log là người thật ⇒
+    3/6 vé trong một lượt soi chỉ sai tên người.
+
+    Ba ca biên, xử thẳng ở đây để chỉ có MỘT định nghĩa:
+      • Việc nền do Administrator chạy thật (scheduler, patch) ⇒ GIỮ Administrator: đó là
+        sự thật, không có người nào bị chặn.
+      • `owner` rỗng / Guest / tài khoản đã bị xoá ⇒ Administrator: thà nói "máy chủ" còn
+        hơn ghi một cái tên không tra ngược được vào cột Link.
+      • Tài khoản đã VÔ HIỆU HOÁ ⇒ vẫn GIỮ tên người đó: câu hỏi là "ai đã bị chặn", và
+        người nghỉ việc tuần trước vẫn là câu trả lời đúng cho tuần trước. Đường báo ngược
+        (`bao_ve_da_xu_ly.can_bao`) đã tự kiểm `User.enabled` trước khi đẩy thẻ, nên giữ
+        tên ở đây không sinh ra thông báo gửi vào hư không.
+    """
+    nguoi = (owner or "").strip()
+    if not nguoi or nguoi in ("Administrator", "Guest"):
+        return "Administrator"
+    if not frappe.db.exists("User", nguoi):
+        return "Administrator"
+    return nguoi
+
+
 def _moc_da_doc() -> str:
     v = frappe.db.get_global(MOC)
     if v:
@@ -144,7 +170,9 @@ def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
         khac = _chuan_hoa(msg_cu or "")
         if khac and (khac.endswith(cua_toi) or cua_toi.endswith(khac)):
             return 0
-    nguoi = r.owner or "Administrator"
+    # `r.owner` chỉ có khi câu SELECT lấy cột ấy — `frappe._dict` trả None cho khoá thiếu,
+    # nên quên cột là im lặng ghi Administrator cho MỌI dòng (đúng lỗi đo được 03/09).
+    nguoi = _chu_dong_log(r.get("owner"))
     vai = ", ".join(sorted(x for x in (frappe.get_roles(nguoi) or []) if x not in ("All", "Guest")))[:500]
     frappe.get_doc({
         "doctype": "Feedback Event",
@@ -184,7 +212,7 @@ def bac_cau_error_log():
 
     moc = _moc_da_doc()
     rows = frappe.db.sql("""
-        SELECT name, creation, method, error FROM `tabError Log`
+        SELECT name, creation, method, error, owner FROM `tabError Log`
          WHERE creation > %s ORDER BY creation ASC LIMIT 200
     """, moc, as_dict=True)
     if not rows:
@@ -213,6 +241,11 @@ def bac_cau_error_log():
                 "message": cau,
                 "source": "auto",
                 "submitter": "(máy chủ)",
+                # Danh tính KHÔNG được lấy từ phiên đang chạy: việc nền chạy dưới
+                # Administrator, nên vé máy gọi nhầm tên người ở cả `submitter_user`,
+                # `user_full_name`, `user_roles` lẫn `affected_users` — tức mọi câu hỏi
+                # "ai đang bị chặn" trả lời sai. Đo prod 03/09/2026: 36 vé trên 5 site.
+                "nguoi_thay_mat": _chu_dong_log(r.get("owner")),
                 # MỐC PHẢI LÀ LÚC LỖI XẢY RA, không phải lúc cầu chạy. Sổ thô đã làm đúng
                 # (`_ghi_su_kien_nen` ghi `ts = r.creation`) nhưng vé thì `collect` tự đóng
                 # dấu `now()`, nên một site vừa bật cầu sẽ đẻ một loạt vé mang giờ HIỆN TẠI
@@ -302,7 +335,7 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
     """
     frappe.only_for(("System Manager", "Administrator"))
     tu = add_days(now_datetime(), -cint(so_ngay))
-    rows = frappe.db.sql("""SELECT name, creation, method, error FROM `tabError Log`
+    rows = frappe.db.sql("""SELECT name, creation, method, error, owner FROM `tabError Log`
                              WHERE creation > %s ORDER BY creation ASC""", tu, as_dict=True)
     nhom = {}
     for r in rows:
@@ -316,9 +349,15 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
             continue
         ck = _tinh_chu_ky(cau, r.method or "", "chan")
         g = nhom.setdefault(ck, {"so_lan": 0, "cau": cau, "method": r.method,
-                                 "dau": str(r.creation), "cuoi": str(r.creation)})
+                                 "dau": str(r.creation), "cuoi": str(r.creation),
+                                 "nguoi": []})
         g["so_lan"] += 1
         g["cuoi"] = str(r.creation)
+        # Một nhóm chữ ký gộp nhiều dòng log của NHIỀU người. Giữ đủ danh sách: câu hỏi
+        # đáng giá nhất của một vé máy là "mấy người dính hay một người bấm nhầm".
+        ng = _chu_dong_log(r.get("owner"))
+        if ng != "Administrator" and ng not in g["nguoi"]:
+            g["nguoi"].append(ng)
 
     ket = {"doc": len(rows), "nhom": len(nhom), "chay_thu": not cint(that_su),
            "top": sorted(nhom.values(), key=lambda x: -x["so_lan"])[:10]}
@@ -334,6 +373,7 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
                 "project": _du_an(), "screen_id": "viec-nen",
                 "screen_name": f"Việc nền · {(g['method'] or '')[:80]}",
                 "message": g["cau"], "source": "auto", "submitter": "(khai thác lịch sử)",
+                "nguoi_thay_mat": (g["nguoi"] or ["Administrator"])[0],
                 "tags": {"type": "bug", "severity": "blocker"},
                 "context": {"app": {"nguon": "error_log_lich_su", "so_lan": g["so_lan"],
                                     "endpoint": (g["method"] or "")[:200],
@@ -343,8 +383,12 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
             # nguyên thì vé nói "1 lần" cho một sự cố đã xảy ra 18 lần — con số sai theo
             # hướng làm người xử lý hạ ưu tiên đúng thứ đáng sửa nhất.
             if kq and kq.get("name"):
-                frappe.db.set_value("Feedback Comment", kq["name"], {
-                    "occurrences": g["so_lan"], "last_seen": g["cuoi"]}, update_modified=False)
+                sua = {"occurrences": g["so_lan"], "last_seen": g["cuoi"]}
+                # `collect` chỉ biết MỘT người (người khai hộ); nhóm thì có cả danh sách.
+                ten = [frappe.db.get_value("User", u, "full_name") or u for u in g["nguoi"]]
+                if ten:
+                    sua["affected_users"] = "; ".join(ten)[:500]
+                frappe.db.set_value("Feedback Comment", kq["name"], sua, update_modified=False)
             ve += 1
         except Exception:
             frappe.log_error(frappe.get_traceback(), "feedback_widget khai_thac_lich_su")
