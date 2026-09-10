@@ -13,6 +13,7 @@ from frappe.tests.utils import FrappeTestCase
 from feedback_widget.bao_ve_da_xu_ly import bao_ve_da_xu_ly, can_bao, dang_bat
 
 NGUOI = "thu-bao-ve@example.com"
+DU_AN = "kiem-thu-bao-ve"   # dấu riêng của bài kiểm này, dùng để dọn
 
 
 def _dung_user():
@@ -24,12 +25,12 @@ def _dung_user():
 def _dung_ve(**kw):
 	d = {"doctype": "Feedback Comment", "message": "Ô cân thực bị cắt mất trên điện thoại",
 	     "status": "New", "source": "user", "screen_id": "#/viec-cua-toi",
-	     "screen_name": "steel-app", "project": "kiem-thu-bao-ve"}
+	     "screen_name": "steel-app", "project": DU_AN}
+	chu = kw.pop("_owner", NGUOI)
 	d.update(kw)
 	ve = frappe.get_doc(d)
 	ve.insert(ignore_permissions=True)
-	frappe.db.set_value("Feedback Comment", ve.name, "owner", kw.pop("_owner", NGUOI),
-	                    update_modified=False)
+	frappe.db.set_value("Feedback Comment", ve.name, "owner", chu, update_modified=False)
 	return frappe.get_doc("Feedback Comment", ve.name)
 
 
@@ -42,7 +43,10 @@ class TestBaoVeDaXuLy(FrappeTestCase):
 	def tearDown(self):
 		for tb in frappe.get_all("Feedback Notice", filters={"cam_on_ai": NGUOI}, pluck="name"):
 			frappe.delete_doc("Feedback Notice", tb, force=True, ignore_permissions=True)
-		for ve in frappe.get_all("Feedback Comment", filters={"owner": NGUOI}, pluck="name"):
+		# Dọn theo DỰ ÁN, không theo chủ vé: `test_khong_bao_cho_chinh_nguoi_dong_ve` đổi
+		# chủ vé thành người đang chạy bộ kiểm, nên lọc theo `owner` bỏ sót đúng vé ấy —
+		# mỗi lượt chạy để lại một vé trong hộp thư thật (đo 10/09/2026: 3 vé của 3 lượt).
+		for ve in frappe.get_all("Feedback Comment", filters={"project": DU_AN}, pluck="name"):
 			frappe.delete_doc("Feedback Comment", ve, force=True, ignore_permissions=True)
 		frappe.db.commit()
 

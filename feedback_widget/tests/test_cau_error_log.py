@@ -4,23 +4,33 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from feedback_widget import tac_vu
+from feedback_widget.tests.nen_cau import NenCau
 
 NGOAI_LE = ("Traceback (most recent call last):\n  File \"x.py\", line 1\n"
             "frappe.exceptions.ValidationError: [XINDUYET] Cân không khớp — NL vào 1.650 kg")
 NHAT_KY = "Repack · [OUTPUT:XB-2026-4171:Xả băng] Nhập kho kết quả Xả băng"
 
 
-class TestCauErrorLog(FrappeTestCase):
+class TestCauErrorLog(NenCau, FrappeTestCase):
 	def setUp(self):
+		self._giu_hien_truong()
 		frappe.set_user("Administrator")
+		# GIỮ mốc cũ để trả lại. Xoá trắng mà không trả lại thì lần chạy cầu TIẾP
+		# THEO trên site ấy đọc lại TOÀN BỘ lịch sử Error Log và đẻ một loạt vé
+		# trùng cho những lỗi đã xử lý xong. Đo trên site asxh 10/09/2026: chạy bộ
+		# kiểm xong, hộp thư của chủ dự án có thêm 6 vé cho các lỗi cũ.
+		self._moc_cu = frappe.db.get_global(tac_vu.MOC)
 		frappe.db.delete("Feedback Comment", {"screen_id": "viec-nen"})
 		frappe.db.delete("Feedback Event", {"screen_id": "viec-nen"})
 		frappe.db.set_global(tac_vu.MOC, "")
 		frappe.db.commit()
 
 	def tearDown(self):
+		self._tra_hien_truong()
 		frappe.db.delete("Feedback Comment", {"screen_id": "viec-nen"})
 		frappe.db.delete("Feedback Event", {"screen_id": "viec-nen"})
+		if self._moc_cu:
+			frappe.db.set_global(tac_vu.MOC, self._moc_cu)
 		frappe.db.commit()
 
 	def _log(self, noi_dung, method="kiemthu viec_nen"):

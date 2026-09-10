@@ -21,6 +21,7 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from feedback_widget import tac_vu
+from feedback_widget.tests.nen_cau import NenCau
 
 CAU_CHAN = "Chỉ ban điều hành mới xem được danh sách chi trả"
 CHAN = ("Traceback (most recent call last):\n  File \"x.py\", line 1\n"
@@ -29,16 +30,25 @@ HONG = ("Traceback (most recent call last):\n  File \"x.py\", line 1\n"
         "builtins.TypeError: cannot read properties of undefined")
 
 
-class TestCauKhongNhanDoi(FrappeTestCase):
+class TestCauKhongNhanDoi(NenCau, FrappeTestCase):
 	def setUp(self):
+		self._giu_hien_truong()
 		frappe.set_user("Administrator")
+		# Giữ mốc cũ — xem tearDown.
+		self._moc_cu = frappe.db.get_global(tac_vu.MOC)
 		self._don()
 		frappe.db.set_global(tac_vu.MOC, "")
 		tac_vu.bac_cau_error_log()      # đặt mốc = bây giờ
 		frappe.db.commit()
 
 	def tearDown(self):
+		self._tra_hien_truong()
 		self._don()
+		# Trả lại mốc: bỏ trắng thì lần chạy cầu tiếp theo trên site ấy đọc lại
+		# TOÀN BỘ lịch sử Error Log và đẻ vé trùng cho lỗi đã xử lý xong.
+		if self._moc_cu:
+			frappe.db.set_global(tac_vu.MOC, self._moc_cu)
+			frappe.db.commit()
 
 	def _don(self):
 		frappe.db.delete("Feedback Comment", {"screen_id": ["in", ("viec-nen", "man-thu")]})
@@ -107,3 +117,35 @@ class TestCauKhongNhanDoi(FrappeTestCase):
 		                  ("builtins.TypeError: x", "blocker"),
 		                  ("builtins.KeyError: 'a'", "blocker")):
 			self.assertEqual(tac_vu._muc_nang(cau), mong, cau)
+
+
+class TestBaiKiemKhongDeLaiDauChan(FrappeTestCase):
+	"""Bài kiểm nào ĐỤNG vào mốc đọc thì phải TRẢ LẠI.
+
+	Mốc là trạng thái toàn site, không phải trạng thái của bài kiểm. Bỏ trắng mà
+	không trả lại thì lần chạy cầu tiếp theo — việc theo lịch, trên site thật —
+	đọc lại toàn bộ lịch sử Error Log và đẻ vé trùng cho những lỗi đã xử lý xong.
+	Đo trên site asxh 10/09/2026: chạy bộ kiểm xong, hộp thư có thêm 6 vé như thế,
+	và không có gì trong bộ kiểm báo động.
+
+	Không kiểm được bằng cách chạy — thứ tự bài kiểm không bảo đảm — nên đọc thẳng
+	mã nguồn của chính thư mục này.
+	"""
+
+	def test_moi_bai_kiem_chay_cau_deu_dung_nen(self):
+		import os, re
+		thu_muc = os.path.dirname(os.path.abspath(__file__))
+		pham = []
+		for ten in sorted(os.listdir(thu_muc)):
+			if not ten.startswith("test_") or not ten.endswith(".py"):
+				continue
+			nguon = open(os.path.join(thu_muc, ten), encoding="utf-8").read()
+			chay_cau = re.search(r"bac_cau_error_log|khai_thac_lich_su", nguon)
+			dung_moc = re.search(r"set_global\(\s*tac_vu\.MOC", nguon)
+			if not (chay_cau or dung_moc):
+				continue
+			if "NenCau" not in nguon:
+				pham.append(ten)
+		self.assertEqual(pham, [],
+		                 f"bài kiểm chạy cầu mà không dùng NenCau — sẽ để lại vé thật "
+		                 f"của site trong hộp thư: {pham}")

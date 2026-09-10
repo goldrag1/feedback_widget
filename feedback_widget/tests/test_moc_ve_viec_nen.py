@@ -14,14 +14,17 @@ from frappe.tests.utils import FrappeTestCase
 from frappe.utils import add_to_date, now_datetime
 
 from feedback_widget import tac_vu
+from feedback_widget.tests.nen_cau import NenCau
 
 
-class TestMocVeViecNen(FrappeTestCase):
+class TestMocVeViecNen(NenCau, FrappeTestCase):
 	def setUp(self):
+		self._giu_hien_truong()
 		self.cu = frappe.db.get_global(tac_vu.MOC)
 		self.moc_loi = add_to_date(now_datetime(), hours=-9)
 
 	def tearDown(self):
+		self._tra_hien_truong()
 		# Trả lại ĐÚNG trạng thái cũ. `set_global(MOC, None)` KHÔNG phải là "xoá": nó ghi
 		# chuỗi "None", rồi `_moc_da_doc()` trả chuỗi ấy và câu SQL `creation > 'None'`
 		# khớp 0 dòng — cầu im lặng không đọc gì nữa. Đo được khi chạy CẢ BỘ: module này
