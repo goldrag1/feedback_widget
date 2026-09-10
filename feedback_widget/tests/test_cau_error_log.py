@@ -9,6 +9,15 @@ NGOAI_LE = ("Traceback (most recent call last):\n  File \"x.py\", line 1\n"
             "frappe.exceptions.ValidationError: [XINDUYET] Cân không khớp — NL vào 1.650 kg")
 NHAT_KY = "Repack · [OUTPUT:XB-2026-4171:Xả băng] Nhập kho kết quả Xả băng"
 
+# Ngoại lệ NHIỀU DÒNG của ERPNext: tên lớp ở dòng ĐẦU, còn dòng chứa dấu `:` cuối cùng
+# là văn xuôi ("…09:59:00."). Chép đúng hình dạng của 3 dòng thật trên prod 08/09/2026.
+NGOAI_LE_NHIEU_DONG = (
+	"NegativeStockError: \n"
+	"\t\t\tThe Batch <strong>39M21803260481</strong> of an item has negative stock in the\n"
+	"\t\t\twarehouse <strong>Kho cuộn - DAN</strong> tính đến 24-08-2026 09:59:00.\n"
+	"\t\t\tPlease add a stock quantity of <strong>5270.0</strong> to proceed with this entry.\n"
+	"\t\t\tSo please ensure the stock levels are adjusted as soon as possible.")
+
 
 class TestCauErrorLog(FrappeTestCase):
 	def setUp(self):
@@ -27,6 +36,26 @@ class TestCauErrorLog(FrappeTestCase):
 		frappe.get_doc({"doctype": "Error Log", "method": method,
 		                "error": noi_dung}).insert(ignore_permissions=True)
 		frappe.db.commit()
+
+	def test_ngoai_le_NHIEU_DONG_van_vao_so(self):
+		"""Người bị chặn mà sổ không có gì = lỗ trong thứ thay người dùng lên tiếng.
+
+		Đo prod 10/09/2026: 3/64 dòng Error Log trong 40 ngày rơi kiểu này, cả ba là
+		`NegativeStockError` ngày 08/09 — hai lượt chặn thật của chị Mai không có một
+		dòng nào trong sổ. Cách đọc cũ (quét ngược tìm dấu `:`) dừng ở câu văn xuôi
+		"…tính đến 24-08-2026 09:59:00.", nên `_dang_ngoai_le` trả False.
+		"""
+		self.assertEqual(tac_vu._cau_loi(NGOAI_LE_NHIEU_DONG).split(":")[0],
+			"NegativeStockError", "phải đọc được TÊN LỚP ở dòng đầu, không phải câu văn xuôi")
+		self.assertTrue(tac_vu._dang_ngoai_le(tac_vu._cau_loi(NGOAI_LE_NHIEU_DONG)))
+		tac_vu.bac_cau_error_log()       # đặt mốc = bây giờ
+		self._log(NGOAI_LE_NHIEU_DONG, method="Sổ kho lô âm: 39M21803260481")
+		kq = tac_vu.bac_cau_error_log()
+		self.assertEqual(kq["su_kien"], 1, "lượt chặn nhiều dòng phải vào sổ")
+
+	def test_van_lay_cau_cuoi_khi_KHONG_co_dong_ngoai_le(self):
+		"""Đường lùi cũ phải còn nguyên — không có dòng `XxxError:` thì lấy câu cuối."""
+		self.assertEqual(tac_vu._cau_loi("dòng một\nkết quả: 42"), "kết quả: 42")
 
 	def test_lan_dau_KHONG_doc_nguoc_lich_su(self):
 		"""Bật một tính năng ghi sổ không được đổ hàng trăm vé cũ vào hộp thư người trực."""
@@ -138,7 +167,7 @@ class TestCauErrorLog(FrappeTestCase):
 		self._log(NGOAI_LE, method="viec_nen hoan_thanh_cong_doan")
 		r = frappe.db.get_value("Error Log", {"method": "viec_nen hoan_thanh_cong_doan"},
 		                        ["name", "creation"], as_dict=True, order_by="creation desc")
-		cau = tac_vu._cau_cuoi(NGOAI_LE)
+		cau = tac_vu._cau_loi(NGOAI_LE)
 		frappe.get_doc({
 			"doctype": "Feedback Event", "project": tac_vu._du_an(), "kind": "chan",
 			"ts": r.creation, "user": "Administrator", "screen_id": "#/lsx/LSX-KIEMTHU",

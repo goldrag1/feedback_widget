@@ -21,9 +21,25 @@ def _du_an() -> str:
     return (cai_dat().get("project_name") or frappe.local.site or "default")[:80]
 
 
-def _cau_cuoi(traceback: str) -> str:
-    """Câu CUỐI của traceback — thứ nói lỗi là gì; phần trên chỉ là đường đi."""
+def _cau_loi(traceback: str) -> str:
+    """Câu NÓI LỖI LÀ GÌ trong traceback — dòng `XxxError: …`, nếu không có thì câu cuối.
+
+    VÌ SAO KHÔNG CHỈ LẤY CÂU CUỐI (đo trên prod 10/09/2026): bản đầu quét NGƯỢC từ đáy
+    lấy dòng đầu tiên có dấu `:`. Với ngoại lệ nhiều dòng của ERPNext, dòng ấy là văn
+    xuôi — `NegativeStockError` có thông điệp 5 dòng và dòng chứa `:` cuối cùng là
+    "…tính đến 24-08-2026 09:59:00.", nên tên lớp ngoại lệ nằm ở dòng ĐẦU không bao giờ
+    được đọc. `_dang_ngoai_le` trả False ⇒ cầu BỎ QUA dòng đó ⇒ người bị chặn mà sổ
+    không có gì. Đo 40 ngày: **3/64** dòng Error Log rơi kiểu này (cả ba
+    `NegativeStockError`, ngày 08/09, cùng một lô) — sổ chặn là thứ thay người dùng lên
+    tiếng, nên một lỗ ở đó không tự lộ ra bao giờ.
+
+    Đọc XUÔI tìm dòng ngoại lệ trước: traceback lồng nhau thì dòng ngoại lệ ĐẦU là
+    nguyên nhân gốc, và đó cũng là thứ `_dang_ngoai_le` cần để phân loại chan/loi.
+    """
     dong = [d.strip() for d in (traceback or "").splitlines() if d.strip()]
+    for d in dong:
+        if _NGOAI_LE.match(d):
+            return d[:1000]
     for d in reversed(dong):
         if ":" in d and not d.startswith("File "):
             return d[:1000]
@@ -223,7 +239,7 @@ def bac_cau_error_log():
     ve = dong_so = 0
     du_an = _du_an()
     for r in rows:
-        cau = _cau_cuoi(r.error)
+        cau = _cau_loi(r.error)
         if not cau or not _dang_ngoai_le(cau):
             continue
         # "Session Stopped" là tiếng ồn của chính Frappe, không phải việc của ai.
@@ -339,7 +355,7 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
                              WHERE creation > %s ORDER BY creation ASC""", tu, as_dict=True)
     nhom = {}
     for r in rows:
-        cau = _cau_cuoi(r.error)
+        cau = _cau_loi(r.error)
         if not cau or not _dang_ngoai_le(cau):
             continue
         if "Session Stopped" in (r.method or "") or "Session Stopped" in cau:
