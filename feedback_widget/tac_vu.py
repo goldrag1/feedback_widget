@@ -102,6 +102,51 @@ def _la_ban_ghi_chua_luu(cau: str, method: str = "") -> bool:
     return bool(_CHUA_LUU.search(van)) and "DoesNotExistError" in van
 
 
+def _trinh_duyet_da_bao(r, cau: str, ck: str) -> bool:
+    """Sự cố này TRÌNH DUYỆT đã báo rồi hay chưa?
+
+    Lỗi 500 của đường đồng bộ vào Error Log *và* được widget báo từ trình duyệt.
+    Chữ ký không khớp được: hai bên khai `endpoint` khác nhau (trình duyệt biết tên
+    endpoint, Error Log chỉ có tiêu đề dòng log) và câu của Error Log mang thêm tiền
+    tố module — nên so bằng CÂU đã chuẩn hoá, khớp một đầu là đủ. Chỉ soi dòng KHÔNG
+    do cầu ghi, để cầu không tự bịt miệng mình.
+
+    Phép này viết ra cho SỔ SỰ KIỆN và suốt thời gian đó KHÔNG ai áp cho VÉ — nên
+    một sự cố vẫn ra hai vé. Đo trên site asxh 10/09/2026: cùng một lần bị chặn ra
+    `FB-…-00013` (trình duyệt, "annoying") và `FB-…-00014` (cầu, "blocker"), cùng
+    giây, hai chữ ký. Nay một luật, một chỗ, cả hai đường cùng gọi.
+    """
+    cua_toi = _chuan_hoa(cau)
+    cu = frappe.db.sql("""SELECT signature, message FROM `tabFeedback Event`
+         WHERE kind IN ('chan','loi') AND IFNULL(screen_id,'') <> 'viec-nen'
+           AND ts BETWEEN %s - INTERVAL 120 SECOND AND %s + INTERVAL 120 SECOND""",
+         (r.creation, r.creation))
+    for sig_cu, msg_cu in cu:
+        if sig_cu == ck:
+            return True
+        khac = _chuan_hoa(msg_cu or "")
+        if khac and (khac.endswith(cua_toi) or cua_toi.endswith(khac)):
+            return True
+    return False
+
+
+def _muc_nang(cau: str) -> str:
+    """Mức nặng của vé do cầu dựng, theo LỚP lỗi.
+
+    Trước 10/09/2026 cầu đóng đinh `blocker` cho mọi dòng — kể cả `chan`, tức luật
+    nghiệp vụ đang chạy ĐÚNG. Chính app này phân biệt hai thứ đó ở `_loai_su_kien`
+    và bảng xếp hạng đọc cột `kind`, nhưng vé thì không. Hệ quả đo được trên site
+    asxh tối 10/09: một đường "vào nhầm vai" đã được giao diện xử lý tử tế vẫn nã
+    năm vé ĐỎ, và một lỗi thật (ảnh chân dung tràn cột) nằm lẫn giữa chúng — tỉ lệ
+    5 rác / 2 thật. Đỏ mà không phải việc gấp là cách chắc chắn để người ta ngừng
+    nhìn màu đỏ.
+
+    `loi` (phần mềm hỏng) giữ `blocker`. `chan` (bị chặn đúng luật) xuống
+    `annoying` — vẫn vào hộp thư, vẫn đếm được, chỉ thôi hét.
+    """
+    return "blocker" if _loai_su_kien(cau) == "loi" else "annoying"
+
+
 def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
     """Cầu Error Log cũng phải ghi vào SỔ THÔ, không chỉ đẻ vé.
 
@@ -129,21 +174,9 @@ def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
          WHERE screen_id='viec-nen' AND context LIKE %s LIMIT 1""",
          (f'%"error_log": "{r.name}"%',)):
         return 0
-    # (b) Cùng sự cố mà TRÌNH DUYỆT đã báo (500 của đường đồng bộ vào cả hai nơi). Chữ ký
-    # không khớp được: hai bên khai `endpoint` khác nhau và câu của Error Log mang thêm tiền
-    # tố module — nên so bằng CÂU đã chuẩn hoá, khớp một đầu là đủ. Chỉ soi dòng KHÔNG do cầu
-    # ghi, để cầu không tự bịt miệng mình.
-    cua_toi = _chuan_hoa(cau)
-    cu = frappe.db.sql("""SELECT signature, message FROM `tabFeedback Event`
-         WHERE kind IN ('chan','loi') AND IFNULL(screen_id,'') <> 'viec-nen'
-           AND ts BETWEEN %s - INTERVAL 120 SECOND AND %s + INTERVAL 120 SECOND""",
-         (r.creation, r.creation))
-    for sig_cu, msg_cu in cu:
-        if sig_cu == ck:
-            return 0
-        khac = _chuan_hoa(msg_cu or "")
-        if khac and (khac.endswith(cua_toi) or cua_toi.endswith(khac)):
-            return 0
+    # (b) Cùng sự cố mà TRÌNH DUYỆT đã báo — xem `_trinh_duyet_da_bao`.
+    if _trinh_duyet_da_bao(r, cau, ck):
+        return 0
     nguoi = r.owner or "Administrator"
     vai = ", ".join(sorted(x for x in (frappe.get_roles(nguoi) or []) if x not in ("All", "Guest")))[:500]
     frappe.get_doc({
@@ -204,6 +237,12 @@ def bac_cau_error_log():
         # Bản ghi chưa lưu bị hỏi quyền — tiếng ồn của desk, không phải ai bị chặn.
         if _la_ban_ghi_chua_luu(cau, r.method):
             continue
+        # Trình duyệt đã báo sự cố này rồi thì cầu không dựng thêm vé nữa. Phép này
+        # vốn chỉ áp cho sổ sự kiện, nên một sự cố ra hai vé với hai mức nặng khác
+        # nhau — xem `_trinh_duyet_da_bao`.
+        if _trinh_duyet_da_bao(r, cau, _tinh_chu_ky(cau, (r.method or "")[:200],
+                                                    _loai_su_kien(cau))):
+            continue
         frappe.set_user("Administrator")
         try:
             collect(**{
@@ -220,7 +259,8 @@ def bac_cau_error_log():
                 # 07:00–07:15, vé ghi 17:15 — tôi đã báo chủ đầu tư "vé vừa lộ lúc 17:15"
                 # và phải đính chính. Người đọc vé không có cách nào biết được sai lệch ấy.
                 "ts": str(r.creation),
-                "tags": {"type": "bug", "severity": "blocker"},
+                # Mức nặng theo LỚP lỗi, không đóng đinh — xem `_muc_nang`.
+                "tags": {"type": "bug", "severity": _muc_nang(cau)},
                 # `endpoint` PHẢI có: `collect` tính chữ ký từ (thông điệp, endpoint), nên
                 # thiếu nó thì cầu gom một kiểu còn hộp thư gom một kiểu — một sự cố ra
                 # hai vé và con số "bao nhiêu lần" sai. Một luật, một khoá.
@@ -334,7 +374,8 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
                 "project": _du_an(), "screen_id": "viec-nen",
                 "screen_name": f"Việc nền · {(g['method'] or '')[:80]}",
                 "message": g["cau"], "source": "auto", "submitter": "(khai thác lịch sử)",
-                "tags": {"type": "bug", "severity": "blocker"},
+                # Mức nặng theo LỚP lỗi, không đóng đinh — xem `_muc_nang`.
+                "tags": {"type": "bug", "severity": _muc_nang(cau)},
                 "context": {"app": {"nguon": "error_log_lich_su", "so_lan": g["so_lan"],
                                     "endpoint": (g["method"] or "")[:200],
                                     "tu": g["dau"], "den": g["cuoi"]}},
