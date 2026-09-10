@@ -75,9 +75,8 @@
   },
   {
    "fieldname": "submitter_user",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Submitter User",
-   "options": "User",
    "in_filter": 1,
    "in_standard_filter": 1,
    "read_only": 1,
