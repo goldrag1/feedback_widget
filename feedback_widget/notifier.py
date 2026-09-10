@@ -24,6 +24,7 @@ Telegram constraints we enforce:
 from __future__ import annotations
 
 import json
+import os
 import mimetypes
 import pathlib
 import secrets
@@ -90,6 +91,10 @@ def _load_config() -> Tuple[Optional[str], Optional[str]]:
 
 
 def is_configured() -> bool:
+    # Trả False trong lúc kiểm để người gọi khỏi XẾP HÀNG một việc gửi tin. Cửa chặn
+    # thật nằm ở `_post`; đây chỉ để hàng đợi không đầy những việc chắc chắn bị bỏ.
+    if dang_kiem_thu():
+        return False
     t, c = _load_config()
     return bool(t and c)
 
@@ -134,7 +139,36 @@ def _build_multipart(
     return body, ctype
 
 
+def dang_kiem_thu() -> bool:
+    """Đang chạy bộ kiểm? Hỏi cả hai nguồn, vì mỗi nguồn hụt một ca.
+
+    `frappe.flags.in_test` là cờ chuẩn, nhưng nó chỉ bật trong tiến trình chạy bộ kiểm —
+    còn tin nhắn lại được đẩy qua HÀNG ĐỢI (`frappe.enqueue`), tức một tiến trình khác,
+    nơi cờ ấy tắt. Nên phải chặn ở CẢ chỗ xếp hàng lẫn chỗ gửi, và chỗ gửi thì đọc thêm
+    biến môi trường mà tiến trình chạy bộ kiểm truyền sang.
+    """
+    if os.environ.get("FBW_KHONG_GUI"):
+        return True
+    try:
+        import frappe
+        return bool(getattr(frappe.flags, "in_test", False)
+                    or getattr(frappe.flags, "in_migrate", False))
+    except Exception:
+        return False
+
+
 def _post(url: str, body: bytes, content_type: str, timeout: int = 30) -> Tuple[bool, dict]:
+    # CỬA CHẶN CUỐI CÙNG. Mọi lệnh gửi đều đi qua đây, nên chặn ở đây là chặn hết —
+    # không phụ thuộc vào việc người viết bài kiểm sau này có nhớ giả lập hay không.
+    #
+    # Vì sao có nó: 10/09/2026, chạy `bench run-tests --app feedback_widget` trên site
+    # thật đã bắn MỘT LOẠT tin Telegram vào máy chủ dự án — trong đó có những câu lấy
+    # từ dữ liệu mẫu của dự án KHÁC (`[XINDUYET] Cân không khớp`, `RuntimeError: hỏng`).
+    # Người nhận đọc chúng như sự cố thật đang xảy ra. Vé rác trong sổ thì còn xoá được;
+    # tin đã gửi thì không rút lại được.
+    if dang_kiem_thu():
+        _log(f"KHÔNG gửi: đang chạy bộ kiểm ({url.split('/')[-1]})")
+        return False, {"bo_qua": "dang_kiem_thu"}
     req = urllib.request.Request(url, data=body, method="POST",
                                  headers={"Content-Type": content_type})
     try:
