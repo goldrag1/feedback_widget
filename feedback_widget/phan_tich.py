@@ -97,8 +97,17 @@ def khong_ai_dung(so_ngay: int = 30) -> dict:
     }
 
 
-def hoi_quy() -> list[dict]:
-    """Chữ ký tái xuất SAU khi vé của nó đã đóng — bản vá không tới nơi, hoặc sai nguyên nhân."""
+def hoi_quy(chi_loi: bool = True) -> list[dict]:
+    """Chữ ký tái xuất SAU khi vé của nó đã đóng — bản vá không tới nơi, hoặc sai nguyên nhân.
+
+    `chi_loi=True` chỉ đếm sự kiện `loi` (phần mềm hỏng). Một CỔNG CHẶN nghiệp vụ bắn lại
+    sau khi vé đóng KHÔNG phải hồi quy — đó là cổng làm đúng việc của nó, và trộn hai loại
+    vào một bảng là cách chắc chắn xếp sai thứ tự ưu tiên. Đo trên prod 11/09/2026: bảng
+    này có 22 dòng, **21 dòng là cổng chặn chạy đúng**, đúng 1 dòng là lỗi thật
+    (`ServiceError: stale in Queued`). Một bảng 95% báo động giả thì hoặc người ta đi đuổi
+    21 con ma, hoặc người ta bỏ qua cả bảng — và bỏ qua luôn dòng thứ 22.
+    """
+    dk = "AND e.outcome = 'loi'" if chi_loi else "AND e.outcome = 'chan'"
     return _rows("""
         SELECT c.name ve, c.signature, c.status, c.status_changed_at, COUNT(e.name) so_lan_sau,
                MAX(e.ts) gan_nhat, MAX(e.message) thong_diep
@@ -106,8 +115,9 @@ def hoi_quy() -> list[dict]:
           JOIN `tabFeedback Event` e ON e.signature = c.signature
          WHERE c.status IN ('Resolved','Wontfix') AND IFNULL(c.signature,'') <> ''
            AND e.ts > IFNULL(c.status_changed_at, c.modified)
+           {dk}
          GROUP BY c.name ORDER BY so_lan_sau DESC LIMIT 20
-    """)
+    """.replace("{dk}", dk))
 
 
 def _bang(tieu_de, rows, cot):
@@ -179,9 +189,20 @@ def bao_cao(so_ngay: int = 7, in_ra: int = 1) -> str:
     d += _bang("Nút chưa ai bấm", kad["nut_khong_ai_bam"][:25],
                [("Nút", "item_name"), ("Ở màn", "screen_id")])
 
-    d += _bang("Hồi quy — vé đã đóng mà lỗi quay lại", hoi_quy(), [
+    d += _bang("Hồi quy — vé đã đóng mà LỖI PHẦN MỀM quay lại", hoi_quy(chi_loi=True), [
         ("Vé", "ve"), ("Lần sau khi đóng", "so_lan_sau"), ("Gần nhất", "gan_nhat"),
         ("Thông điệp", "thong_diep")])
+
+    # Cổng chặn bắn lại KHÔNG phải hồi quy — để riêng, và nói rõ đây thường là chuyện BÌNH
+    # THƯỜNG. Vẫn in ra vì một cổng bắn dày bất thường là dấu hiệu luật quá chặt hoặc người
+    # dùng đang bị đẩy vào đường cụt; chỉ là nó không được đứng chung bảng với lỗi phần mềm.
+    chan_lai = hoi_quy(chi_loi=False)
+    if chan_lai:
+        d += ["_Cổng chặn nghiệp vụ bắn lại sau khi vé đóng — thường là ĐÚNG (cổng đang làm "
+              "việc của nó). Chỉ đáng xem khi số lần tăng vọt._", ""]
+        d += _bang("Cổng chặn vẫn bắn sau khi vé đóng (không phải hồi quy)", chan_lai, [
+            ("Vé", "ve"), ("Lần sau khi đóng", "so_lan_sau"), ("Gần nhất", "gan_nhat"),
+            ("Thông điệp", "thong_diep")])
 
     ra = "\n".join(d)
     if cint(in_ra):
