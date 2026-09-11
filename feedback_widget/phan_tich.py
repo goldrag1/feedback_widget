@@ -65,7 +65,22 @@ def bo_cuoc(so_ngay: int = 7) -> list[dict]:
     return ra[:20]
 
 
+def tuoi_so_ngay() -> int:
+    """Sổ sự kiện đã sống được bao nhiêu ngày. 0 nếu chưa có dòng nào.
+
+    Mọi mục "không ai dùng" phải kẹp theo con số này. Báo cáo từng khai "46/56 màn chưa ai
+    vào trong 30 ngày" khi sổ mới có 1 giờ 12 phút — suýt thành cơ sở để xoá màn. Đo lại
+    11/09/2026 trên một site khác: sổ 16 ngày mà nhãn vẫn in "30 ngày", và 7 màn cấu hình
+    (khai một lần rồi thôi) đọc thành "30 ngày không ai vào".
+    """
+    r = frappe.db.sql("SELECT MIN(ts), MAX(ts) FROM `tabFeedback Event`")
+    if not r or not r[0][0]:
+        return 0
+    return max(0, (r[0][1] - r[0][0]).days)
+
+
 def khong_ai_dung(so_ngay: int = 30) -> dict:
+    so_ngay = min(cint(so_ngay), tuoi_so_ngay()) or cint(so_ngay)
     tu = add_days(now_datetime(), -cint(so_ngay))
     dung_man = {r[0] for r in frappe.db.sql(
         "SELECT DISTINCT screen_id FROM `tabFeedback Event` WHERE ts > %s", tu)}
@@ -78,7 +93,7 @@ def khong_ai_dung(so_ngay: int = 30) -> dict:
     return {
         "man_khong_ai_vao": [m for m in man if m["item_id"] not in dung_man],
         "nut_khong_ai_bam": [n for n in nut if n["item_id"] not in dung_nut],
-        "tong_man": len(man), "tong_nut": len(nut),
+        "tong_man": len(man), "tong_nut": len(nut), "cua_so_ngay": cint(so_ngay),
     }
 
 
@@ -145,7 +160,17 @@ def bao_cao(so_ngay: int = 7, in_ra: int = 1) -> str:
         ("Người", "user"), ("Lúc", "ts"), ("Màn", "screen_name"), ("Thông điệp", "message")])
 
     kad = khong_ai_dung(max(so_ngay, 30))
-    d += [f"### Không ai dùng (trong {max(so_ngay, 30)} ngày)", "",
+    _tuoi = tuoi_so_ngay()
+    if _tuoi <= 0:
+        # Sổ rỗng thì "chưa ai vào" đúng với MỌI màn và không nói lên điều gì. Nói thẳng
+        # là chưa đo được, đừng in một con số đọc như kết luận.
+        _nhan = "sổ CHƯA CÓ sự kiện nào — mục này chưa có nghĩa"
+    elif kad["cua_so_ngay"] >= max(so_ngay, 30):
+        _nhan = f"trong {kad['cua_so_ngay']} ngày"
+    else:
+        _nhan = (f"sổ MỚI CÓ {_tuoi} ngày — cửa sổ thật là {kad['cua_so_ngay']} ngày, "
+                 f"không phải {max(so_ngay, 30)}")
+    d += [f"### Không ai dùng ({_nhan})", "",
           f"- Màn: **{len(kad['man_khong_ai_vao'])}/{kad['tong_man']}** chưa ai vào",
           f"- Nút: **{len(kad['nut_khong_ai_bam'])}/{kad['tong_nut']}** chưa ai bấm "
           f"(chỉ tính nút đã được kiểm kê trên màn có người mở)", ""]
