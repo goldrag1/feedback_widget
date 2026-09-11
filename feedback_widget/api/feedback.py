@@ -117,6 +117,10 @@ def _la_chan_da_biet(thong_diep: str) -> bool:
     return any(m in van for m in mau)
 
 
+class _KhongGhiKhiKiem(Exception):
+    """Bỏ qua bước ghi sổ JSONL vì đang chạy bộ kiểm — không phải lỗi."""
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def collect(**kwargs):
     """Accept a feedback payload from the widget. Returns {ok, name, saved_as}.
@@ -288,18 +292,46 @@ def collect(**kwargs):
         "affected_screens": (entry.get("screen_name") or entry["screen_id"] or "")[:500] or None,
         "raw_payload": json.dumps(entry, ensure_ascii=False),
     })
-    doc.flags.ignore_permissions = False
+    # Dòng này TỪNG là `= False` cứng, nên một người gọi NỘI BỘ đã tự nâng quyền
+    # tường minh (`frappe.flags.ignore_permissions = True`) vẫn bị chặn — và bị
+    # chặn bằng một `PermissionError` RỖNG, tức màn hình hiện một lỗi không chữ nào.
+    #
+    # Cửa HTTP không đổi: `collect` vẫn `allow_guest=False`, khách vẫn không gọi
+    # thẳng vào đây được. Chỗ này chỉ tôn trọng quyết định của người gọi nội bộ —
+    # đúng hợp đồng quen thuộc của Frappe. Dự án `kind_heart` dùng nó cho một cửa
+    # RIÊNG dành cho khách vãng lai (`kind_heart.api.gop_y_khach`): chặn 5 lượt/giờ
+    # mỗi IP, cắt độ dài, không nhận tệp — đúng thứ mà chú thích ở đầu `collect`
+    # gọi là "a separate collector with rate-limiting in front".
+    doc.flags.ignore_permissions = bool(frappe.flags.ignore_permissions)
     doc.insert()
 
     # 2) Mirror raw payload to JSONL inbox for AI agent consumption
+    #
+    # KHÔNG ghi khi đang chạy bộ kiểm. Sổ này là một tệp trên ĐĨA, nên nó sống sót
+    # qua `rollback` của bộ kiểm trong khi dòng `Feedback Comment` biến mất — để lại
+    # một dòng trỏ tới một vé KHÔNG TỒN TẠI, và mọi `_doc_name` sau đó trùng nhau vì
+    # bộ đếm dãy tên cũng bị lùi. Đo 11/09/2026: 4 dòng như vậy trên site thật, mỗi
+    # dòng đánh thức một phiên tự trị và tiêu một lượt xử lý 30 phút cho chữ "x".
+    #
+    # CỐ Ý không dùng `notifier.dang_kiem_thu()` dù nó ở ngay cạnh: hàm ấy còn nhận
+    # biến môi trường `FBW_KHONG_GUI`, và biến ấy nghĩa là "đừng GỬI đi", không phải
+    # "đừng GHI lại". Ai đó tắt Telegram cho đỡ ồn trên bench của mình mà vô tình mất
+    # luôn hộp thư JSONL thì đó là mất dữ liệu, im lặng. Hai quyết định khác nhau.
+    # Ở đây `in_test` là đủ và đúng: dòng này được ghi TRONG chính tiến trình chạy
+    # bộ kiểm — khác tin Telegram, thứ đi qua hàng đợi sang một tiến trình khác nơi
+    # cờ ấy đã tắt (lý do `dang_kiem_thu` phải hỏi thêm biến môi trường).
     saved_path = ""
     try:
+        if getattr(frappe.flags, "in_test", False):
+            raise _KhongGhiKhiKiem()
         jpath = _jsonl_path(entry["project"])
         # Stamp the row name so agents can cross-reference jsonl line ↔ DocType
         mirror = dict(entry)
         mirror["_doc_name"] = doc.name
         mirror["_site"] = frappe.local.site
         saved_path = append_jsonl(jpath, mirror)
+    except _KhongGhiKhiKiem:
+        saved_path = ""
     except Exception as e:
         # Log but don't fail the request — DocType insert already succeeded.
         frappe.log_error(message=str(e), title="feedback_widget jsonl mirror failed")
