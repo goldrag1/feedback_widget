@@ -66,10 +66,17 @@ def cai_dat() -> dict:
     return ra
 
 
-def vai_duoc_thay_nut(user: str = None) -> int:
-    """Người này có được THẤY nút 💬 không (phạm vi vai trò của bản 24/08)."""
+def vai_duoc_thay_nut(user: str = None, noi: str = "desk") -> int:
+    """Người này có được THẤY nút 💬 không (phạm vi vai trò của bản 24/08).
+
+    `noi` là NƠI hỏi: `"desk"` hay `"portal"`. Trước 20/09/2026 hàm chỉ đọc
+    `enable_on_desk`, nên ô `enable_on_portal` trong Cài đặt **không có ai đọc** — một
+    công tắc tồn tại mà không điều khiển gì, và người vận hành tắt nó đi thì không có gì
+    đổi. Mặc định giữ `"desk"` để mọi lời gọi cũ chạy y như trước.
+    """
     ct = cai_dat()
-    if not (int(ct.get("enabled") or 0) and int(ct.get("enable_on_desk") or 0)):
+    khoa_noi = "enable_on_portal" if noi == "portal" else "enable_on_desk"
+    if not (int(ct.get("enabled") or 0) and int(ct.get(khoa_noi) or 0)):
         return 0
     if int(ct.get("allow_all_roles") or 0):
         return 1
@@ -84,7 +91,7 @@ def vai_duoc_thay_nut(user: str = None) -> int:
     return 1 if cua_toi.intersection(cho_phep) else 0
 
 
-def payload_cho_trinh_duyet(user: str = None) -> dict:
+def payload_cho_trinh_duyet(user: str = None, noi: str = "desk") -> dict:
     """Phần cài đặt trình duyệt cần biết. Không chứa gì bí mật.
 
     `show_widget` và `auto_report`/`collect_usage` ĐỘC LẬP với nhau: ẩn nút mà vẫn thu là
@@ -92,7 +99,7 @@ def payload_cho_trinh_duyet(user: str = None) -> dict:
     """
     ct = cai_dat()
     return {
-        "show_widget": vai_duoc_thay_nut(user),
+        "show_widget": vai_duoc_thay_nut(user, noi),
         "auto_report": int(ct.get("auto_report") or 0),
         "collect_usage": int(ct.get("collect_usage") or 0),
         "usage_sample_pct": int(ct.get("usage_sample_pct") or 0),

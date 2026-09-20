@@ -438,6 +438,23 @@ def _push_telegram_for_doc(doc_name: str) -> None:
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def payload_portal() -> dict:
+    """Cấu hình trình duyệt cho trang KHÔNG PHẢI desk (portal, SPA, màn React của app khác).
+
+    `extend_bootinfo` chỉ chạy cho boot của desk, nên trang website không có
+    `frappe.boot.feedback_widget`. Bundle rơi vào nhánh an toàn "boot rỗng ⇒ KHÔNG tự thu":
+    sổ sự kiện đứng im 0 dòng và **không một lỗi nào** báo ra — đúng cái bẫy mà chú thích
+    trong `hooks.py` đã cảnh báo, chỉ ở một cửa khác.
+
+    Trả về CÙNG payload ấy, nhưng gác bằng `enable_on_portal` thay cho `enable_on_desk`.
+    Một nguồn sự thật, hai nơi hỏi.
+    """
+    from feedback_widget.cai_dat import payload_cho_trinh_duyet
+
+    return payload_cho_trinh_duyet(frappe.session.user, noi="portal")
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def status_for_names(names=None, project: str = None):
     """Return status info for the given Feedback Comment names, scoped to
     those submitted by the current user.
