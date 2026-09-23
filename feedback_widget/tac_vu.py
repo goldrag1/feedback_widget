@@ -17,6 +17,25 @@ from feedback_widget.chu_ky import dau_hieu as _tinh_dau_hieu
 MOC = "feedback_widget:moc_error_log"        # mốc đã đọc tới đâu (frappe cache/singles)
 
 
+
+def _ghi_moc(gia_tri: str) -> None:
+    """Ghi mốc vào `tabDefaultValue` (`__global`) mà KHÔNG xoá trắng cache của site.
+
+    ĐỪNG đổi về `frappe.db.set_global`: nó đi `set_default` → `_clear_cache("__global")` →
+    `frappe.clear_cache()` không tham số = xoá MỌI khoá cache của site (token, phiên phụ,
+    meta…). Job này chạy mỗi 15 phút, site nhiều Error Log là xoá trắng tới 96 lần/ngày.
+    Cùng lớp lỗi đo 23/09/2026 ở `misa_bridge`: token đọc của trợ lý chết giữa lượt hỏi.
+    Chỉ bỏ ĐÚNG đệm `defaults::__global` — thứ duy nhất `get_global` đọc qua.
+    """
+    from frappe.cache_manager import clear_defaults_cache
+
+    frappe.db.delete("DefaultValue", {"parent": "__global", "defkey": MOC})
+    frappe.get_doc({
+        "doctype": "DefaultValue", "parent": "__global", "parenttype": "__default",
+        "parentfield": "system_defaults", "defkey": MOC, "defvalue": gia_tri,
+    }).db_insert()
+    clear_defaults_cache("__global")
+
 def _du_an() -> str:
     return (cai_dat().get("project_name") or frappe.local.site or "default")[:80]
 
@@ -94,7 +113,7 @@ def _moc_da_doc() -> str:
     # đều "không lớn hơn mốc" và bị bỏ qua VĨNH VIỄN — mất dòng mà không ai biết, đúng
     # lớp lỗi mà sổ này sinh ra để chống (bộ test bắt được ngay lượt đầu).
     moc = now_datetime().strftime("%Y-%m-%d %H:%M:%S.%f")
-    frappe.db.set_global(MOC, moc)
+    _ghi_moc(moc)
     return moc
 
 
@@ -218,7 +237,7 @@ def bac_cau_error_log():
     không ai từng đọc — trong đó có 10 lần "kho không đủ nguyên liệu" và 9 lần "lệnh chưa
     phê duyệt", tức xưởng đứng hình mà bên làm phần mềm không biết.
 
-    Mốc đọc lưu bằng `db.set_global`: chạy lại không nhân đôi, và nếu job chết giữa chừng
+    Mốc đọc lưu ở `tabDefaultValue` (`_ghi_moc`): chạy lại không nhân đôi, và nếu job chết giữa chừng
     thì lần sau đọc lại từ mốc CŨ (thà lặp một vài dòng — `collect` tự gộp theo chữ ký —
     còn hơn nhảy cóc mất dòng).
     """
@@ -283,7 +302,7 @@ def bac_cau_error_log():
         except Exception:
             frappe.log_error(frappe.get_traceback(), "feedback_widget bac_cau_error_log")
 
-    frappe.db.set_global(MOC, str(rows[-1].creation))
+    _ghi_moc(str(rows[-1].creation))
     frappe.db.commit()
     return {"doc": len(rows), "ve": ve, "su_kien": dong_so}
 
