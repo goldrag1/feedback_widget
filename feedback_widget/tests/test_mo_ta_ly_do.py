@@ -19,9 +19,9 @@ _GOC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _JS = os.path.join(_GOC, "public", "js", "feedback_widget_core.js")
 
 
-def _trich_ham(ten: str) -> str:
+def _trich_ham(ten: str, tham_so: str = "r") -> str:
     src = open(_JS, encoding="utf-8").read()
-    i = src.index(ten + "(r) {")
+    i = src.index(ten + "(" + tham_so + ") {")
     j = src.index("{", i)
     sau, k = 1, j + 1
     while sau and k < len(src):
@@ -36,7 +36,8 @@ def _trich_ham(ten: str) -> str:
 class TestMoTaLyDo(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.ham = _trich_ham("_moTaLyDo")
+        # `_moTaLyDo` gọi `_cauSach` — trích cả hai, vào cùng một lớp.
+        cls.ham = _trich_ham("_moTaLyDo") + "\n" + _trich_ham("_cauSach", "s")
 
     def _chay(self, cac_ly_do):
         js = (
@@ -48,6 +49,22 @@ class TestMoTaLyDo(unittest.TestCase):
         r = subprocess.run(["node", "-e", js], capture_output=True, text=True, timeout=30)
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout.strip().splitlines()[-1])
+
+    def test_thuc_the_html_duoc_giai(self):
+        # Frappe thoát html câu throw: "Khổ tấm > 0" tới dưới dạng "&gt;". Không giải thì
+        # vé hiện chữ lạ VÀ lệch chữ ký với bản app chủ báo ⇒ một lần chặn thành hai vé.
+        sm = json.dumps([json.dumps({"message": "Tấm cắt cần Khổ tấm (rộng phôi) &gt; 0."})])
+        ra = self._chay([{"_server_messages": sm},
+                         {"exception": "X &lt; Y &amp;&amp; A &amp;gt; B"}])
+        self.assertEqual(ra[0], "Tấm cắt cần Khổ tấm (rộng phôi) > 0.")
+        self.assertEqual(ra[1], "X < Y && A &gt; B")
+
+    def test_duong_bat_loi_mang_cung_giai(self):
+        # Đường bắt lỗi MẠNG (`_baoTuNetwork`) chính là đường đẻ vé thứ hai — nó phải đi qua
+        # cùng một hàm dọn câu, không tự viết bản gỡ thẻ riêng.
+        ham = _trich_ham("_baoTuNetwork", "url, status, text, ms")
+        self.assertIn("this._cauSach(msg)", ham)
+        self.assertNotIn("replace(/<[^>]+>/g", ham)
 
     def test_cau_cua_may_chu_duoc_boc_ra(self):
         sm = json.dumps([json.dumps({"message": "<b>Lô này</b> đã xuất kho rồi."})])

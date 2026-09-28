@@ -2066,6 +2066,22 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
      *  "Promise: [object Object]", không Error Log máy chủ nào kèm theo, nên không ai biết
      *  chị ấy vấp cái gì. Một vé không nói được điều gì thì bằng không có vé.
      */
+    /** Câu của máy chủ → chữ thường người đọc: gỡ THẺ html VÀ giải THỰC THỂ.
+     *
+     *  Frappe thoát html câu `frappe.throw` trong `_server_messages`, nên "Khổ tấm > 0" tới
+     *  đây là "Khổ tấm &gt; 0". Chỉ gỡ thẻ thì vé hiện nguyên chữ `&gt;`, và vì câu KHÁC câu
+     *  do app chủ báo (đã giải) nên chữ ký cũng khác ⇒ MỘT lần bị chặn đẻ HAI vé (đo prod
+     *  ducan 28/09: FB-2026-02660 + 02661). `&amp;` giải CUỐI, nếu không "&amp;gt;" thành ">".
+     */
+    _cauSach(s) {
+      return String(s == null ? '' : s)
+        .replace(/<[^>]+>/g, '')
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .trim();
+    }
+
     _moTaLyDo(r) {
       if (r == null) return '';
       if (typeof r === 'string') return r.slice(0, 500);
@@ -2076,13 +2092,13 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         if (sm) {
           const arr = JSON.parse(sm);
           if (arr.length) {
-            const cau = String(JSON.parse(arr[0]).message || '').replace(/<[^>]+>/g, '').trim();
+            const cau = this._cauSach(JSON.parse(arr[0]).message);
             if (cau) return cau.slice(0, 500);
           }
         }
       } catch (_e) {}
       const exc = than && (than.exception || than._error_message);
-      if (exc) return String(exc).replace(/<[^>]+>/g, '').trim().slice(0, 500);
+      if (exc) return this._cauSach(exc).slice(0, 500);
       // 2) Error thường
       if (r.message) return String(r.message).slice(0, 500);
       // 3) jqXHR không thân: nói status, còn hơn ba chữ vô nghĩa
@@ -2221,7 +2237,7 @@ body.fbw-picking, body.fbw-picking * { cursor: crosshair !important; }
         if (!msg) msg = j.exception || j._error_message || '';
       } catch (_e) {}
       if (!msg) msg = 'HTTP ' + status + ' · ' + this._tenEndpoint(url);
-      msg = String(msg).replace(/<[^>]+>/g, '').trim().slice(0, 1000);
+      msg = this._cauSach(msg).slice(0, 1000);
       // 403 khi CHƯA đăng nhập không phải chỗ tắc — đó là màn đăng nhập làm việc của nó.
       if (status === 403 && /login|not permitted|CSRF/i.test(msg) && !this._daDangNhap()) return;
       setTimeout(() => {
