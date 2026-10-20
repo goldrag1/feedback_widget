@@ -185,7 +185,7 @@ Không đạt thì CHẶN và nói rõ ai thiếu quyền gì. Đây là cổng 
 `user` · `huan_chuong` (Select, danh mục ở §8.3) · `luc` · `nguon_doctype`, `nguon_name` · `khoa` (unique) · `da_bao`.
 
 ### 4.10 Thay đổi trên DocType đã có
-- `Feedback Comment`: thêm `co_ich` (Check, "Góp ý có ích") và `thanh_cai_tien` (Check, "Dẫn tới
+- `Feedback Comment`: thêm `tu_cam_nhan` (Check, ẩn: góp ý sinh từ thẻ hỏi cảm nhận) và `co_ich` (Check, "Góp ý có ích") và `thanh_cai_tien` (Check, "Dẫn tới
   cải tiến đã ra bản"; bật ô này thì tự bật `co_ich`).
 - `Feedback Notice`: thêm `kich_ban` (Link), `loai_nhac` (Data: mã luật ở §7), `nhiem_vu` (Link).
   Mỗi lời nhắc là một Notice, nên **chính Notice là sổ nhắc**. Có sẵn `Feedback Notice Seen.da_bam`
@@ -270,11 +270,17 @@ Cấp + thanh tới cấp kế · tổng điểm · huân chương ×N · danh s
 
 ### 6.4 Hỏi cảm nhận khi xong chặng
 "Màn «Chốt tồn» dùng thấy sao?" với 👍 / 👎 và một ô gõ không bắt buộc.
-- Bấm 👍/👎 thì tạo `Feedback Comment` `source='user'`, `screen_id` của màn, `tag_type` để trống,
-  nội dung "👍" / "👎 <chữ gõ>", và cộng `diem_cam_nhan` (một lần cho mỗi chặng; `khoa` =
+- Chỉ bấm 👍 (không gõ chữ) thì **không tạo `Feedback Comment`**: lưu vào progress (`cam_nhan`
+  JSON `{chặng: "👍"}`) và ghi một `Feedback Event` `action_id='kich-ban::cam-nhan'`. Lý do: mọi
+  góp ý gõ tay đều bị đẩy lên Telegram (`api/feedback.py`), và một 👍 không đáng làm phiền ai.
+- Bấm 👎, hoặc gõ chữ, thì tạo `Feedback Comment` `source='user'` với cờ mới `tu_cam_nhan=1`. Góp ý
+  này đi vào triage và Telegram như mọi vé khác, vì một lời chê là việc thật.
+- Cả hai trường hợp đều cộng `diem_cam_nhan` MỘT lần cho mỗi chặng (`khoa` =
   `Cảm nhận|KB|chặng|user`).
-- 👎 hoặc có chữ gõ thì góp ý đi vào quy trình triage như mọi vé khác.
+- **Góp ý `tu_cam_nhan=1` KHÔNG thỏa bước "Góp ý trên màn"**, để một cú chạm không ăn cả điểm bước
+  lẫn điểm cảm nhận (phản mục tiêu "góp ý rác lấy điểm").
 - Bỏ qua thì không hỏi lại cho chặng đó.
+- *(Quyết định của Claude.)*
 
 > **Why:** đây là chỗ đánh vào con số "1–3 góp ý/tháng". Hỏi ngay lúc người dùng vừa làm xong, bằng
 > một cú chạm, thay vì đợi họ tự nghĩ ra để mở widget.
@@ -318,9 +324,26 @@ không trách. Mẫu lời ghi trong mã, mỗi luật một mẫu.
 | **N2 Chậm tiến độ** | Đã qua ≥ 40% thời gian giao, và tỷ lệ bước xong của chặng mục tiêu < tỷ lệ thời gian đã trôi − `nhac_cham_bien` điểm % | người nhận | "«Chốt tồn»: xong 1/3 bước, còn 4 ngày. Bước kế: ghi phiếu chốt hôm nay →" |
 | **N3 Sắp hết hạn** | Còn ≤ `nhac_sap_het_gio` giờ mà chưa xong | người nhận, một lần | "Còn 1 ngày để xong «Làm quen» của «Chốt tồn» →" |
 | **N4 Quá hạn** | Quá `het_han` mà chưa xong | người nhận (một lần, giọng "vẫn làm tiếp được") + **người giao** (một thẻ tổng hợp mỗi ngày: ai quá hạn, kẹt ở bước nào, đã nhắc mấy lần) | |
-| **N5 Duy trì chưa đạt** | Ngày làm việc, đã tới `gio_han` − 2 giờ mà kỳ này chưa đạt | người đang có chuỗi ≥ 1, hoặc người được giao chặng đó | "Hôm nay chưa chốt tồn kho Hà Đông — chuỗi 4 ngày đang chờ →" |
+| **N5 Duy trì chưa đạt** | Ngày làm việc, đã tới `gio_han` − 2 giờ mà kỳ này chưa đạt | CHỈ người đang được giao chặng đó | "Hôm nay chưa chốt tồn kho Hà Đông — chuỗi 4 ngày đang chờ →" |
 | **N6 Kẹt vì bị chặn** | ≥ 3 lần chặn cùng chữ ký trên màn của kịch bản trong 1 giờ | người đó | Có mẹo `Bị chặn` khớp thì hiện mẹo. Không có thì: "Có vẻ đang vướng ở đây. Gửi góp ý (đã kèm sẵn màn) →" |
 | **N7 Hướng dẫn bỏ dở** | Mở lại màn khi `huong_dan = Đang xem` | người đó, một lần | "Xem tiếp hướng dẫn (còn 2 thẻ)?" |
+
+**Ai nhận nhắc:** N1–N5 chỉ gửi cho người ĐƯỢC GIAO (họ có công tắc `Feedback Mission.nhac`).
+N6 và N7 là thẻ tại chỗ, hiện cho mọi người đang mở màn. Người không được giao vẫn có chuỗi Duy
+trì trong hồ sơ, nhưng không bao giờ bị nhắc. Chuỗi tính theo NGƯỜI, không theo kho: hôm Lâm nghỉ
+và đồng nghiệp chốt hộ thì chuỗi của Lâm đứt. Đúng ý đồ, vì đây là thước đo việc Lâm có dùng hay
+không. *(Quyết định của Claude.)*
+
+**Vòng đời một thẻ nhắc:**
+- `het_han` = cuối giờ làm của ngày làm việc kế tiếp, để thẻ không chất đống.
+- **"Bỏ qua"** chỉ tính khi người dùng bấm ✕ (`da_xem`, `da_bam=0`). Thẻ tự ẩn sau
+  `giay_tu_dong_dong` giây không tính là bỏ qua; thẻ vẫn hiện lại lần mở sau cho tới khi hết hạn.
+- **"Để mai"** gọi `da_xem` với cờ `tam_hoan=1` (thêm Check `tam_hoan` vào `Feedback Notice Seen`)
+  và đặt `progress.nhac_tam_hoan_den`. Thẻ đó biến mất. Hôm sau, nếu vẫn chậm, cron gửi một thẻ MỚI.
+  Không cần truy vấn ẩn-theo-người riêng.
+- **"Mở"** gọi `da_xem` với `da_bam=1` và đặt `so_lan_bo_qua_lien = 0`.
+
+*(Quyết định của Claude.)*
 
 **Luật chống ồn** (áp dụng trước khi gửi bất kỳ lời nhắc nào):
 1. Chỉ gửi trong khoảng `gio_lam_tu`–`gio_lam_den`, vào `ngay_lam_viec`. Lời nhắc rơi ngoài giờ thì
@@ -427,17 +450,20 @@ với `thanh_cai_tien`. Vé thành cải tiến mà `tag_type` trống thì ch�
 7. **Người dùng ở hai công ty, hoặc dùng chung tài khoản** (ví dụ `kt.hamona@gmail.com` "Kế toán
    HTS"). Chấm theo tài khoản. Báo cáo ghi chú các tài khoản không gắn Employee.
 8. **Chủ đầu tư tự thử.** Vẫn chấm, nhưng ẩn khỏi bảng vàng.
-9. **Mất sự kiện.** `usage_sample_pct` = 100 trên prod, nhưng mỗi trình duyệt có trần
+9. **Lần chặn chỉ vào sổ khi `auto_report=1`** (prod = 1, đo 20/10), và cùng một thông điệp lặp
+   trong 3 giây chỉ ghi một lần. `chap_nhan_chan` và N6 phụ thuộc vào điều này. Khi bật `kb_bat` mà
+   `auto_report=0` thì Cài đặt CẢNH BÁO; hai tính năng đó tự tắt chứ không chấm sai.
+10. **Mất sự kiện.** `usage_sample_pct` = 100 trên prod, nhưng mỗi trình duyệt có trần
    `max_events_per_minute` = 120. Có thể mất vài sự kiện "mở/bấm". Chấp nhận, vì bước "đã ghi thật"
    dùng nguồn máy chủ. Không vượt trần cho kịch bản.
-10. **`Feedback Event.ts` là lúc máy chủ NHẬN lô**, không phải lúc người dùng bấm. Lô gửi trễ qua nửa
+11. **`Feedback Event.ts` là lúc máy chủ NHẬN lô**, không phải lúc người dùng bấm. Lô gửi trễ qua nửa
     đêm có thể lệch `so_ngay` hoặc kỳ Duy trì một ngày. Chấp nhận.
-11. **Ngày nghỉ.** Kỳ Duy trì và lời nhắc chỉ tính `ngay_lam_viec`. Ngày lễ lượt này chưa tính.
+12. **Ngày nghỉ.** Kỳ Duy trì và lời nhắc chỉ tính `ngay_lam_viec`. Ngày lễ lượt này chưa tính.
     *(Hoãn có lý do: chưa site nào khai Holiday List cho nhân viên kho; khi cần thì đọc Holiday List
     của Employee.)*
-12. **Site không có `tabEmployee` / HRMS.** Phần dự phòng công ty (§6.6) và người nhận thẻ N4 (người
+13. **Site không có `tabEmployee` / HRMS.** Phần dự phòng công ty (§6.6) và người nhận thẻ N4 (người
     giao) không phụ thuộc HRMS.
-13. **`kb_bat = 0`.** Cron không chạy, menu không hiện, API trả rỗng, dữ liệu giữ nguyên.
+14. **`kb_bat = 0`.** Cron không chạy, menu không hiện, API trả rỗng, dữ liệu giữ nguyên.
 
 ## 11. Lập kịch bản khi ra bản (đổi quy trình, không chỉ đổi mã)
 
@@ -474,7 +500,8 @@ Ghi chú:
 - `feedback_widget` cài trên **erp.htsfood.com và hkd688.vn** (chung mã trên một bench). `kb_bat`
   mặc định 0; chỉ bật cho erp.htsfood.com.
 - Nhánh sống là **`develop`**, không phải `main`. Prod đang ở `f0fbe40`; local ở `dd1fe95` (+1 commit
-  chỉ có test) cộng thêm commit spec này.
+  chỉ có test) cộng thêm các commit spec. `tro_ly_ke_toan` local (`b716a21`) đi SAU prod (`9a29a43`);
+  phải kéo về trước khi làm kịch bản Đối soát / Hộp thư.
 - Deploy cần: migrate (DocType mới, trường mới, patch chỉ mục, patch bù điểm), build bundle (thêm
   tệp JS), restart web (thêm module Python và hook mới). Restart gây 502 khoảng 1 giây cho cả 3 site
   trên bench, nên chọn giờ vắng.
