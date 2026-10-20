@@ -545,6 +545,37 @@ lối vào sai, không phải người dùng thờ ơ. Sau 2 tuần, đọc tỷ
 - Đo lại mọi lối vào (§6.1) trên prod bằng dữ liệu thật.
 - Không có test đỏ, không có test để lại dữ liệu trên site.
 
+### Kết quả rà nợ 20/10/2026 (trước deploy — đo trên mirror, 116 + 52 test xanh, Chrome thật ĐẠT)
+
+**Sửa ngay:**
+- *Hai thẻ cho một việc* — đúng như lo: vé Resolved sinh thẻ "Đã xử lý xong" VÀ điểm +20/+50 chưa
+  báo ⇒ widget hiện thêm thẻ chúc mừng cùng lúc. Nay `bao_ve_da_xu_ly._gop_thuong` ghép điểm +
+  huân chương của CHÍNH vé đó vào thẻ báo và đánh dấu `da_bao`; thẻ chúc mừng chỉ còn gánh điểm
+  khác (test `TestThuongDiChungTheBao`).
+- *Bảng vàng có SQL cộng điểm riêng* ⇒ `diem.bang_diem`, API gọi vào đó.
+- *Test để lại dữ liệu*: hai tài khoản `thu-kb-*` sót trên mirror ⇒ `tearDownModule` → `xoa_nguoi()`.
+- *Thanh bên mồ côi*: mục "Home" trỏ Workspace "Feedback" đã gỡ làm TRẮNG trang mọi báo cáo không
+  có mục riêng (TypeError `.public`) ⇒ `thanh_ben.don_va_bo_sung` ở after_migrate + 4 lối vào mới.
+- *Hai chồng thẻ đè nhau* (nút "Để mai" bấm không tới) ⇒ dùng chung `#fbw-thong-bao-lop`.
+- *Đóng vé bằng `db.set_value` bỏ qua điểm* ⇒ ghi vào `feedback-announce` + `feedback-analyse-latest`:
+  đóng bằng `doc.save()`, đặt `tag_type` + `thanh_cai_tien`.
+- *Thẻ hướng dẫn trỏ phần chỉ hiện sau khi chọn dữ liệu* (7/10 thẻ ở 3 màn) ⇒ mỗi thẻ thêm chỗ dự
+  phòng có sẵn lúc mới mở, khỏi đẻ vé máy `kich-ban-chi-vao-mat` cho mọi người mới.
+
+**Hoãn, có lý do:**
+- Bốn câu SQL "khớp màn" (`kich_ban.dem_buoc`, `api._so_phien_truoc`, `nhac.meo_tai_cho`, báo cáo
+  `tac_dung_cua_nhac`) dùng CHUNG `kich_ban.mau_like`; câu truy vấn khác nhau vì câu hỏi khác nhau
+  (đếm phiên trước mốc · đếm chặn trong 1 giờ · có sự kiện trong 24 giờ). Không gộp.
+- `da_bao` có hai nơi ghi (`diem.danh_dau_da_bao`, `_gop_thuong`) — cùng một nghĩa "đã báo cho người".
+- Màn điện thoại `www` không nạp bundle desk nên chưa có kịch bản; bốn màn đợt 1 đều là desk/Page.
+- Hộp thư Thành thạo "tạo đơn mua HOẶC gắn đối tác": bước là AND nên chỉ còn "+ Tạo đơn mua"; cần
+  loại bước "một trong" nếu chủ đầu tư muốn giữ chữ "hoặc".
+- Selector form Đối soát NCC chưa đo được trên mirror (form mới không dựng — `tro_ly_ke_toan` local
+  đi sau prod 26 commit); mẫu `.frappe-control[data-fieldname=…]` đã đo đúng trên form desk khác.
+  Đo trên prod ở bước nghiệm thu, cùng việc đo lại mọi lối vào §6.1.
+- Có sẵn từ trước, ngoài phạm vi: hash tab của form (`#details`) bị ghi thành `screen_id`
+  (`currentRoute` trả mọi hash) — lần mở đầu không có hash nên bước "Mở màn" vẫn khớp.
+
 ## 16. Để cho người làm quyết
 
 Màu và icon, câu chữ cụ thể (giữ ngắn, đúng khuôn ở §7), hiệu ứng viền sáng, cách vẽ thanh tiến độ,

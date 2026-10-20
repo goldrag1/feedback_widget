@@ -73,3 +73,8 @@ class TestKichBanGiao(FrappeTestCase):
 		c.kich_ban("Form/THUKB X/*")
 		with self.assertRaises(frappe.ValidationError):
 			c.kich_ban("Form/THUKB X/ABC-*")
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()

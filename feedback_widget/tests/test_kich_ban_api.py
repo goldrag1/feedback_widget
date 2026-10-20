@@ -110,3 +110,8 @@ class TestKichBanApi(FrappeTestCase):
 		r = api.thanh_tich()
 		self.assertEqual(r["cap"], "Tập sự")
 		self.assertEqual(r["kich_ban"][0]["ten"], self.k.ten)
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()

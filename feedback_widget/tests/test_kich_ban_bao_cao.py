@@ -83,3 +83,8 @@ class TestKichBanBaoCao(FrappeTestCase):
 		self.assertEqual(rows[self.k.name]["so_dat"], 0)
 		ds = [r["kich_ban"] for r in mc.du_lieu() if r["kich_ban"] in (k2.name, self.k.name)]
 		self.assertEqual(ds, [self.k.name, k2.name], "màn ít người đạt nhất lên đầu")
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()

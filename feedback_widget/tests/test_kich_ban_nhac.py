@@ -129,3 +129,8 @@ class TestKichBanNhac(FrappeTestCase):
 			self._giao(k)
 		nhac.nhac_kich_ban(c.sau(T2, days=1, hours=1))
 		self.assertEqual(len(_the(c.NGUOI_A)), 3, "tối đa 3 lời nhắc/người/ngày")
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()

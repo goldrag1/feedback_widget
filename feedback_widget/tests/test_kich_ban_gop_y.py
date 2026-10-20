@@ -57,3 +57,42 @@ class TestKichBanGopY(FrappeTestCase):
 		v6_bu_diem_gop_y.execute([ve.name])
 		v6_bu_diem_gop_y.execute([ve.name])
 		self.assertEqual(diem.tong_diem(c.NGUOI_A), 20)
+
+
+class TestThuongDiChungTheBao(FrappeTestCase):
+	"""Rà nợ §15: vé Resolved sinh thẻ "Đã xử lý xong" VÀ điểm +20 — trước đây là HAI thẻ cùng lúc
+	(thẻ báo + thẻ chúc mừng). Nay điểm đi chung thẻ báo và được đánh dấu đã báo."""
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		frappe.set_user("Administrator")
+		c.nguoi(c.NGUOI_A)
+		cls.cu = c.dat_cai_dat(kb_bat=1)
+
+	@classmethod
+	def tearDownClass(cls):
+		c.don_dep()
+		c.dat_cai_dat(**cls.cu)
+		super().tearDownClass()
+
+	def setUp(self):
+		c.don_dep()
+
+	def test_diem_vao_the_bao_va_da_bao(self):
+		frappe.set_user(c.NGUOI_A)
+		ve = _ve(tag="bug")
+		frappe.set_user("Administrator")
+		ve.status, ve.status_note, ve.thanh_cai_tien = "Resolved", "Đã sửa nút lưu.", 1
+		ve.save(ignore_permissions=True)
+		tb = frappe.get_all("Feedback Notice", filters={"nguon_ve": ve.name}, fields=["noi_dung"])
+		self.assertEqual(len(tb), 1)
+		self.assertIn("+70 điểm", tb[0].noi_dung)
+		self.assertIn("Mắt tinh", tb[0].noi_dung)
+		self.assertEqual(diem.chua_bao(c.NGUOI_A)["diem"], [], "đã báo trong thẻ ⇒ widget không chúc mừng lần hai")
+		self.assertEqual(diem.chua_bao(c.NGUOI_A)["huan_chuong"], [])
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()

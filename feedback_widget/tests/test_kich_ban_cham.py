@@ -108,3 +108,8 @@ class TestKichBanCham(FrappeTestCase):
 		kb.cham(k.name, c.NGUOI_A, c.sau(T2, days=3, hours=1))
 		self.assertFalse(diem.huan_chuong_cua(c.NGUOI_A).get("mo-duong"))
 		self.assertTrue(frappe.db.exists("Feedback Point", {"user": c.NGUOI_A, "ly_do": "Hoàn thành nhiệm vụ"}))
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()

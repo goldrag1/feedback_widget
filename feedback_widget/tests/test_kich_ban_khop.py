@@ -99,3 +99,8 @@ class TestKichBanKhop(FrappeTestCase):
 		self.assertIsNone(kb.kich_ban_cua_man("Form/Khac/ABC-1"))
 		k.db_set("dang_bat", 0)
 		self.assertIsNone(kb.kich_ban_cua_man("Form/THUKB Doc/ABC-1"))
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()
