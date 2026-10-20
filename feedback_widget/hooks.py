@@ -31,7 +31,7 @@ extend_bootinfo = "feedback_widget.api.feedback.extend_bootinfo"
 # Nó vẫn nằm đó mà KHÔNG AI GỌI: đo trên prod 26/08 sau hai lượt migrate, cả ba khoá mới
 # (`hien_tag`, `cho_dinh_anh`, `giay_tu_dong_dong`) vẫn trống, phải gieo bằng tay. Hàm chống
 # bẫy mà không được nối dây thì bẫy vẫn nguyên.
-after_migrate = "feedback_widget.cai_dat.gieo_mac_dinh"
+after_migrate = ["feedback_widget.cai_dat.gieo_mac_dinh", "feedback_widget.thanh_ben.don_va_bo_sung"]
 
 scheduler_events = {
     "cron": {
