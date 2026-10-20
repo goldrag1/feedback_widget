@@ -37,7 +37,36 @@
   "digest_hour",
   "section_rieng_tu",
   "redact_keys",
-  "khong_de_ve"
+  "khong_de_ve",
+  "section_kich_ban",
+  "kb_bat",
+  "diem_buoc",
+  "diem_chang",
+  "diem_ky_duy_tri",
+  "diem_nhiem_vu",
+  "diem_mo_duong",
+  "gio_mo_duong",
+  "diem_co_ich",
+  "diem_cai_tien",
+  "diem_cam_nhan",
+  "column_break_kb",
+  "nguong_thanh_thao",
+  "nguong_key_user",
+  "nguong_dai_su",
+  "tuan_chuyen_can",
+  "phien_da_quen",
+  "section_nhac",
+  "gio_lam_tu",
+  "gio_lam_den",
+  "ngay_lam_viec",
+  "nhac_toi_da_ngay",
+  "nhac_toi_da_kb_ngay",
+  "nhac_dung_sau_bo_qua",
+  "column_break_nhac",
+  "nhac_chua_mo_gio",
+  "nhac_cham_bien",
+  "nhac_sap_het_gio",
+  "khong_xep_hang"
  ],
  "fields": [
   {
@@ -241,11 +270,157 @@
    "fieldname": "khong_de_ve",
    "fieldtype": "Small Text",
    "label": "Câu chặn KHÔNG đẻ vé (mỗi dòng một mẫu)"
+  },
+  {
+   "fieldname": "section_kich_ban",
+   "fieldtype": "Section Break",
+   "label": "Kịch bản màn (nhiệm vụ · nhắc · điểm)"
+  },
+  {
+   "fieldname": "kb_bat",
+   "fieldtype": "Check",
+   "label": "Bật kịch bản màn"
+  },
+  {
+   "fieldname": "diem_buoc",
+   "fieldtype": "Int",
+   "label": "Điểm mỗi bước"
+  },
+  {
+   "fieldname": "diem_chang",
+   "fieldtype": "Int",
+   "label": "Điểm mỗi chặng"
+  },
+  {
+   "fieldname": "diem_ky_duy_tri",
+   "fieldtype": "Int",
+   "label": "Điểm mỗi kỳ duy trì"
+  },
+  {
+   "fieldname": "diem_nhiem_vu",
+   "fieldtype": "Int",
+   "label": "Điểm hoàn thành nhiệm vụ"
+  },
+  {
+   "fieldname": "diem_mo_duong",
+   "fieldtype": "Int",
+   "label": "Điểm người mở đường"
+  },
+  {
+   "fieldname": "gio_mo_duong",
+   "fieldtype": "Int",
+   "label": "Số giờ để là người mở đường"
+  },
+  {
+   "fieldname": "diem_co_ich",
+   "fieldtype": "Int",
+   "label": "Điểm góp ý có ích"
+  },
+  {
+   "fieldname": "diem_cai_tien",
+   "fieldtype": "Int",
+   "label": "Điểm góp ý thành cải tiến"
+  },
+  {
+   "fieldname": "diem_cam_nhan",
+   "fieldtype": "Int",
+   "label": "Điểm trả lời cảm nhận"
+  },
+  {
+   "fieldname": "column_break_kb",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "nguong_thanh_thao",
+   "fieldtype": "Int",
+   "label": "Ngưỡng Thành thạo"
+  },
+  {
+   "fieldname": "nguong_key_user",
+   "fieldtype": "Int",
+   "label": "Ngưỡng Key user"
+  },
+  {
+   "fieldname": "nguong_dai_su",
+   "fieldtype": "Int",
+   "label": "Ngưỡng Đại sứ chuyển đổi số"
+  },
+  {
+   "fieldname": "tuan_chuyen_can",
+   "fieldtype": "Int",
+   "label": "Số tuần liên tiếp cho Chuyên cần"
+  },
+  {
+   "fieldname": "phien_da_quen",
+   "fieldtype": "Int",
+   "label": "Số phiên coi là đã quen màn"
+  },
+  {
+   "fieldname": "section_nhac",
+   "fieldtype": "Section Break",
+   "label": "Nhắc nhở"
+  },
+  {
+   "fieldname": "gio_lam_tu",
+   "fieldtype": "Data",
+   "label": "Giờ làm từ (HH:MM)"
+  },
+  {
+   "fieldname": "gio_lam_den",
+   "fieldtype": "Data",
+   "label": "Giờ làm đến (HH:MM)"
+  },
+  {
+   "fieldname": "ngay_lam_viec",
+   "fieldtype": "Data",
+   "label": "Ngày làm việc (1=Thứ Hai)"
+  },
+  {
+   "fieldname": "nhac_toi_da_ngay",
+   "fieldtype": "Int",
+   "label": "Tối đa nhắc / người / ngày"
+  },
+  {
+   "fieldname": "nhac_toi_da_kb_ngay",
+   "fieldtype": "Int",
+   "label": "Tối đa nhắc / kịch bản / ngày"
+  },
+  {
+   "fieldname": "nhac_dung_sau_bo_qua",
+   "fieldtype": "Int",
+   "label": "Dừng nhắc sau số lần bỏ qua liên tiếp"
+  },
+  {
+   "fieldname": "column_break_nhac",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "nhac_chua_mo_gio",
+   "fieldtype": "Int",
+   "label": "Nhắc «chưa mở» sau (giờ)"
+  },
+  {
+   "fieldname": "nhac_cham_bien",
+   "fieldtype": "Int",
+   "label": "Biên chậm tiến độ (điểm %)"
+  },
+  {
+   "fieldname": "nhac_sap_het_gio",
+   "fieldtype": "Int",
+   "label": "Nhắc «sắp hết hạn» trước (giờ)"
+  },
+  {
+   "fieldname": "khong_xep_hang",
+   "fieldtype": "Table MultiSelect",
+   "label": "Không xếp hạng",
+   "options": "Feedback Notice User"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-08-27 17:20:00.000000",
+ "modified": "2026-10-20 09:00:00.000000",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Settings",

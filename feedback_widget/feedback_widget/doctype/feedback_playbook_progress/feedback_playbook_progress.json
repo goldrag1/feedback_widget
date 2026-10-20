@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "kich_ban",
+  "user",
+  "bat_dau",
+  "huong_dan",
+  "huong_dan_the",
+  "chang_hien_tai",
+  "buoc_xong",
+  "chang_xong",
+  "duy_tri",
+  "cam_nhan",
+  "lan_nhac_cuoi",
+  "so_lan_bo_qua_lien",
+  "nhac_tam_hoan_den"
+ ],
+ "fields": [
+  {
+   "fieldname": "kich_ban",
+   "fieldtype": "Link",
+   "label": "Kịch bản",
+   "options": "Feedback Playbook",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Người dùng",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "bat_dau",
+   "fieldtype": "Datetime",
+   "label": "Bắt đầu"
+  },
+  {
+   "fieldname": "huong_dan",
+   "fieldtype": "Select",
+   "label": "Hướng dẫn",
+   "options": "Chưa xem\nĐang xem\nĐã xem\nBỏ qua",
+   "default": "Chưa xem"
+  },
+  {
+   "fieldname": "huong_dan_the",
+   "fieldtype": "Int",
+   "label": "Thẻ hướng dẫn đang đứng"
+  },
+  {
+   "fieldname": "chang_hien_tai",
+   "fieldtype": "Data",
+   "label": "Chặng hiện tại",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "buoc_xong",
+   "fieldtype": "Code",
+   "label": "Bước đã xong",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "chang_xong",
+   "fieldtype": "Code",
+   "label": "Chặng đã xong",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "duy_tri",
+   "fieldtype": "Code",
+   "label": "Duy trì",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "cam_nhan",
+   "fieldtype": "Code",
+   "label": "Cảm nhận",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "lan_nhac_cuoi",
+   "fieldtype": "Datetime",
+   "label": "Lần nhắc cuối"
+  },
+  {
+   "fieldname": "so_lan_bo_qua_lien",
+   "fieldtype": "Int",
+   "label": "Số lần bỏ qua nhắc liên tiếp"
+  },
+  {
+   "fieldname": "nhac_tam_hoan_den",
+   "fieldtype": "Datetime",
+   "label": "Tạm hoãn nhắc đến"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Playbook Progress",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "huan_chuong",
+  "luc",
+  "nguon_doctype",
+  "nguon_name",
+  "khoa",
+  "da_bao"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Người dùng",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "huan_chuong",
+   "fieldtype": "Select",
+   "label": "Huân chương",
+   "options": "mo-duong\nmat-tinh\nnguoi-goi-y\nchuyen-can\ntheo-man\nchuoi-10\nchuoi-30",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "luc",
+   "fieldtype": "Datetime",
+   "label": "Lúc",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "nguon_doctype",
+   "fieldtype": "Data",
+   "label": "Nguồn (DocType)"
+  },
+  {
+   "fieldname": "nguon_name",
+   "fieldtype": "Data",
+   "label": "Nguồn (mã)"
+  },
+  {
+   "fieldname": "khoa",
+   "fieldtype": "Data",
+   "label": "Khoá",
+   "unique": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "da_bao",
+   "fieldtype": "Check",
+   "label": "Đã báo cho người dùng"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Badge Award",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

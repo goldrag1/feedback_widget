@@ -18,6 +18,9 @@
   "status",
   "status_changed_at",
   "status_note",
+  "co_ich",
+  "thanh_cai_tien",
+  "tu_cam_nhan",
   "section_screen",
   "screen_id",
   "screen_name",
@@ -347,6 +350,24 @@
    "options": "JSON",
    "read_only": 1,
    "description": "Exact submission payload as received. Mirrored to sites/<site>/private/feedback/<project>.jsonl"
+  },
+  {
+   "fieldname": "co_ich",
+   "fieldtype": "Check",
+   "label": "Góp ý có ích",
+   "description": "Tự bật khi chuyển sang Resolved; tắt tay được"
+  },
+  {
+   "fieldname": "thanh_cai_tien",
+   "fieldtype": "Check",
+   "label": "Dẫn tới cải tiến đã ra bản"
+  },
+  {
+   "fieldname": "tu_cam_nhan",
+   "fieldtype": "Check",
+   "label": "Sinh từ thẻ hỏi cảm nhận",
+   "hidden": 1,
+   "read_only": 1
   }
  ],
  "links": [],
@@ -377,5 +398,6 @@
  "sort_field": "ts",
  "sort_order": "DESC",
  "title_field": "screen_name",
- "track_changes": 1
+ "track_changes": 1,
+ "modified": "2026-10-20 09:00:00.000000"
 }

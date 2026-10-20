@@ -1,0 +1,139 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "KB-.####",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "ten",
+  "man",
+  "duong_dan",
+  "ly_do",
+  "column_break_1",
+  "dang_bat",
+  "project",
+  "nguon",
+  "section_huong_dan",
+  "huong_dan",
+  "section_chang",
+  "chang",
+  "buoc",
+  "section_meo",
+  "meo"
+ ],
+ "fields": [
+  {
+   "fieldname": "ten",
+   "fieldtype": "Data",
+   "label": "Tên kịch bản",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "man",
+   "fieldtype": "Data",
+   "label": "Màn (mẫu screen_id, cho phép *)",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "duong_dan",
+   "fieldtype": "Data",
+   "label": "Đường dẫn mở màn",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ly_do",
+   "fieldtype": "Small Text",
+   "label": "Dùng màn này để được gì"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "dang_bat",
+   "fieldtype": "Check",
+   "label": "Đang bật",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Data",
+   "label": "Dự án"
+  },
+  {
+   "fieldname": "nguon",
+   "fieldtype": "Data",
+   "label": "Nguồn (commit / tính năng)"
+  },
+  {
+   "fieldname": "section_huong_dan",
+   "fieldtype": "Section Break",
+   "label": "Hướng dẫn lần đầu"
+  },
+  {
+   "fieldname": "huong_dan",
+   "fieldtype": "Table",
+   "label": "Thẻ hướng dẫn",
+   "options": "Feedback Playbook Guide"
+  },
+  {
+   "fieldname": "section_chang",
+   "fieldtype": "Section Break",
+   "label": "Chặng mục tiêu"
+  },
+  {
+   "fieldname": "chang",
+   "fieldtype": "Table",
+   "label": "Chặng",
+   "options": "Feedback Playbook Stage"
+  },
+  {
+   "fieldname": "buoc",
+   "fieldtype": "Table",
+   "label": "Bước",
+   "options": "Feedback Mission Step"
+  },
+  {
+   "fieldname": "section_meo",
+   "fieldtype": "Section Break",
+   "label": "Mẹo"
+  },
+  {
+   "fieldname": "meo",
+   "fieldtype": "Table",
+   "label": "Mẹo",
+   "options": "Feedback Playbook Tip"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Playbook",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "ten",
+ "show_title_field_in_link": 1
+}

@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "diem",
+  "ly_do",
+  "nguon_doctype",
+  "nguon_name",
+  "khoa",
+  "da_bao"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "Người dùng",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "diem",
+   "fieldtype": "Int",
+   "label": "Điểm",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "ly_do",
+   "fieldtype": "Select",
+   "label": "Lý do",
+   "options": "Bước\nChặng\nKỳ duy trì\nHoàn thành nhiệm vụ\nNgười mở đường\nGóp ý có ích\nGóp ý thành cải tiến\nCảm nhận\nThu hồi",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "nguon_doctype",
+   "fieldtype": "Data",
+   "label": "Nguồn (DocType)"
+  },
+  {
+   "fieldname": "nguon_name",
+   "fieldtype": "Data",
+   "label": "Nguồn (mã)"
+  },
+  {
+   "fieldname": "khoa",
+   "fieldtype": "Data",
+   "label": "Khoá chống cộng đôi",
+   "unique": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "da_bao",
+   "fieldtype": "Check",
+   "label": "Đã báo cho người dùng"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Point",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

@@ -30,6 +30,10 @@ MAC_DINH = {
     "giay_tu_dong_dong": 20,
     # thu thập tự động (bản 25/08)
     "auto_report": 1,
+    # Có trong DocType từ 27/08 nhưng THIẾU ở đây, nên `gieo_mac_dinh` bản cũ (gọi
+    # `doc.save()`) ghi chết 0 vào nó lần đầu có khoá mới cần gieo — đo trên mirror 20/10:
+    # thêm khoá kịch bản màn là "Tự báo vé đã xử lý" tắt ngay, không một dòng lỗi.
+    "tu_dong_bao_ve": 1,
     "telegram_first_seen": 1,
     "bridge_error_log": 1,
     "throttle_minutes": 10,
@@ -44,6 +48,32 @@ MAC_DINH = {
     # đang vấp), nhưng KHÔNG đẻ vé và không bắn Telegram. Mỗi dòng một mẫu, so khớp
     # không phân biệt hoa thường trên nội dung thông điệp.
     "khong_de_ve": "",
+    # Kịch bản màn (bản 20/10/2026, spec docs/specs/2026-10-20-kich-ban-man-design.md §4.10).
+    # Công tắc tổng TẮT mặc định: app dùng chung bench với site khác, bật từng site một.
+    "kb_bat": 0,
+    "diem_buoc": 10,
+    "diem_chang": 30,
+    "diem_ky_duy_tri": 5,
+    "diem_nhiem_vu": 30,
+    "diem_mo_duong": 20,
+    "gio_mo_duong": 48,
+    "diem_co_ich": 20,
+    "diem_cai_tien": 50,
+    "diem_cam_nhan": 5,
+    "nguong_thanh_thao": 100,
+    "nguong_key_user": 300,
+    "nguong_dai_su": 700,
+    "tuan_chuyen_can": 4,
+    "phien_da_quen": 3,
+    "gio_lam_tu": "08:00",
+    "gio_lam_den": "18:00",
+    "ngay_lam_viec": "1,2,3,4,5,6",
+    "nhac_toi_da_ngay": 3,
+    "nhac_toi_da_kb_ngay": 1,
+    "nhac_dung_sau_bo_qua": 3,
+    "nhac_chua_mo_gio": 24,
+    "nhac_cham_bien": 25,
+    "nhac_sap_het_gio": 24,
 }
 
 
@@ -128,14 +158,29 @@ def gieo_mac_dinh() -> list:
 
     KHÔNG đè khoá đã khai — kể cả `enabled = 0` mà ai đó cố ý tắt.
     """
-    doc = frappe.get_single(DOCTYPE)
+    # GHI THẲNG từng dòng còn thiếu, KHÔNG `doc.save()`: lưu cả Single là ghi luôn 0 cho
+    # mọi ô Check/Int chưa ai chạm mà không nằm trong MAC_DINH (đã tắt mất `tu_dong_bao_ve`
+    # trên mirror 20/10). `tabSingles` không có khoá unique ⇒ chỉ INSERT khoá chưa có.
     da_khai = {r[0] for r in frappe.db.sql(
         """SELECT field FROM `tabSingles` WHERE doctype = %s""", DOCTYPE)}
-    thieu = [k for k in MAC_DINH if k not in da_khai]
+    co_o = {f.fieldname for f in frappe.get_meta(DOCTYPE).fields}
+    thieu = [k for k in MAC_DINH if k not in da_khai and k in co_o]
     for k in thieu:
-        doc.set(k, MAC_DINH[k])
+        frappe.db.sql("""INSERT INTO `tabSingles` (doctype, field, value) VALUES (%s, %s, %s)""",
+                      (DOCTYPE, k, MAC_DINH[k]))
     if thieu:
-        doc.flags.ignore_permissions = True
-        doc.save()
+        frappe.clear_document_cache(DOCTYPE, DOCTYPE)
         frappe.db.commit()
     return thieu
+
+
+def khong_xep_hang() -> set:
+    """Người KHÔNG hiện trên bảng vàng (bảng con — không nằm trong `tabSingles` nên
+    `cai_dat()` không thấy). Chưa ai khai thì mặc định: Administrator."""
+    try:
+        ds = frappe.db.sql(
+            """SELECT user FROM `tabFeedback Notice User`
+                WHERE parenttype = %s AND parentfield = 'khong_xep_hang'""", DOCTYPE)
+    except Exception:
+        ds = ()
+    return {r[0] for r in ds if r[0]} | {"Administrator"}

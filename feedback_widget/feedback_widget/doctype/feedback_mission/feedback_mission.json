@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "NV-.YY.MM.-.####",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "kich_ban",
+  "chang_muc_tieu",
+  "chuoi_muc_tieu",
+  "column_break_1",
+  "bat_dau",
+  "het_han",
+  "nhac",
+  "nguoi_giao",
+  "section_nguoi",
+  "nguoi_nhan"
+ ],
+ "fields": [
+  {
+   "fieldname": "kich_ban",
+   "fieldtype": "Link",
+   "label": "Kịch bản",
+   "options": "Feedback Playbook",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "chang_muc_tieu",
+   "fieldtype": "Data",
+   "label": "Chặng cần đạt (mã)",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "chuoi_muc_tieu",
+   "fieldtype": "Int",
+   "label": "Số kỳ liên tiếp cần đạt (chặng Duy trì)",
+   "default": "3"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "bat_dau",
+   "fieldtype": "Datetime",
+   "label": "Bắt đầu"
+  },
+  {
+   "fieldname": "het_han",
+   "fieldtype": "Datetime",
+   "label": "Hạn",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "nhac",
+   "fieldtype": "Check",
+   "label": "Nhắc khi chậm",
+   "default": "1"
+  },
+  {
+   "fieldname": "nguoi_giao",
+   "fieldtype": "Link",
+   "label": "Người giao",
+   "options": "User"
+  },
+  {
+   "fieldname": "section_nguoi",
+   "fieldtype": "Section Break",
+   "label": "Người được giao"
+  },
+  {
+   "fieldname": "nguoi_nhan",
+   "fieldtype": "Table",
+   "label": "Người nhận",
+   "options": "Feedback Mission Assignee",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Mission",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 0,
+   "print": 0,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 0,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

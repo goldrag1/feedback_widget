@@ -1,0 +1,92 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "ma",
+  "ten",
+  "thu_tu",
+  "loai",
+  "chu_ky",
+  "gio_han",
+  "ngay_lam_viec",
+  "diem",
+  "hoi_cam_nhan"
+ ],
+ "fields": [
+  {
+   "fieldname": "ma",
+   "fieldtype": "Data",
+   "label": "Mã",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "lam-quen, thanh-thao, chuyen-gia… Bước trỏ vào chặng bằng mã này"
+  },
+  {
+   "fieldname": "ten",
+   "fieldtype": "Data",
+   "label": "Tên chặng",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "thu_tu",
+   "fieldtype": "Int",
+   "label": "Thứ tự",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "label": "Loại",
+   "options": "Một lần\nDuy trì",
+   "default": "Một lần",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "chu_ky",
+   "fieldtype": "Select",
+   "label": "Chu kỳ (Duy trì)",
+   "options": "\nNgày\nTuần",
+   "depends_on": "eval:doc.loai=='Duy trì'"
+  },
+  {
+   "fieldname": "gio_han",
+   "fieldtype": "Time",
+   "label": "Hạn trong ngày (Duy trì)",
+   "depends_on": "eval:doc.loai=='Duy trì'"
+  },
+  {
+   "fieldname": "ngay_lam_viec",
+   "fieldtype": "Data",
+   "label": "Ngày làm việc (1=Thứ Hai)",
+   "description": "Trống = theo Cài đặt"
+  },
+  {
+   "fieldname": "diem",
+   "fieldtype": "Int",
+   "label": "Điểm khi xong chặng / mỗi kỳ"
+  },
+  {
+   "fieldname": "hoi_cam_nhan",
+   "fieldtype": "Check",
+   "label": "Hỏi cảm nhận khi xong",
+   "default": "1"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Playbook Stage",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "istable": 1
+}

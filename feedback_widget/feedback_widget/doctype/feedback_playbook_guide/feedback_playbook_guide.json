@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "thu_tu",
+  "tieu_de",
+  "noi_dung",
+  "chi_vao",
+  "vi_tri"
+ ],
+ "fields": [
+  {
+   "fieldname": "thu_tu",
+   "fieldtype": "Int",
+   "label": "Thứ tự",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "tieu_de",
+   "fieldtype": "Data",
+   "label": "Tiêu đề",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "noi_dung",
+   "fieldtype": "Small Text",
+   "label": "Nội dung (tối đa 2 câu)",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "chi_vao",
+   "fieldtype": "Data",
+   "label": "Chỉ vào (selector CSS, ngăn bằng ;)",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "vi_tri",
+   "fieldtype": "Select",
+   "label": "Vị trí",
+   "options": "tự động\ntrên\ndưới",
+   "default": "tự động"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Playbook Guide",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "istable": 1
+}
