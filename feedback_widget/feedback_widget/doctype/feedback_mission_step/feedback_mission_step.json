@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "chang",
+  "mo_ta",
+  "loai",
+  "nut",
+  "endpoint",
+  "chap_nhan_chan",
+  "doctype_ct",
+  "docstatus_toi_thieu",
+  "so_lan",
+  "so_ngay",
+  "diem"
+ ],
+ "fields": [
+  {
+   "fieldname": "chang",
+   "fieldtype": "Data",
+   "label": "Mã chặng",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "mo_ta",
+   "fieldtype": "Data",
+   "label": "Mô tả (hiện cho người dùng)",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "loai",
+   "fieldtype": "Select",
+   "label": "Loại",
+   "options": "Mở màn\nBấm nút\nGọi máy chủ\nTạo chứng từ\nGóp ý trên màn",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "nut",
+   "fieldtype": "Data",
+   "label": "Mẫu action_id (cho phép *)",
+   "depends_on": "eval:doc.loai=='Bấm nút'"
+  },
+  {
+   "fieldname": "endpoint",
+   "fieldtype": "Data",
+   "label": "Endpoint",
+   "depends_on": "eval:doc.loai=='Gọi máy chủ'"
+  },
+  {
+   "fieldname": "chap_nhan_chan",
+   "fieldtype": "Data",
+   "label": "Chặn mà vẫn tính là xong khi thông điệp chứa",
+   "depends_on": "eval:doc.loai=='Gọi máy chủ'"
+  },
+  {
+   "fieldname": "doctype_ct",
+   "fieldtype": "Link",
+   "label": "DocType chứng từ",
+   "options": "DocType",
+   "depends_on": "eval:doc.loai=='Tạo chứng từ'"
+  },
+  {
+   "fieldname": "docstatus_toi_thieu",
+   "fieldtype": "Select",
+   "label": "Trạng thái tối thiểu",
+   "options": "0\n1",
+   "default": "0",
+   "depends_on": "eval:doc.loai=='Tạo chứng từ'"
+  },
+  {
+   "fieldname": "so_lan",
+   "fieldtype": "Int",
+   "label": "Số lần tối thiểu",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "so_ngay",
+   "fieldtype": "Int",
+   "label": "Số ngày khác nhau tối thiểu",
+   "default": "1"
+  },
+  {
+   "fieldname": "diem",
+   "fieldtype": "Int",
+   "label": "Điểm",
+   "description": "Trống = theo Cài đặt"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Mission Step",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "istable": 1
+}

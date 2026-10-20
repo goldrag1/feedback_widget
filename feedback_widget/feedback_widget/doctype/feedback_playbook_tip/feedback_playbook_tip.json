@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-20 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "khi",
+  "dieu_kien",
+  "noi_dung",
+  "chi_vao"
+ ],
+ "fields": [
+  {
+   "fieldname": "khi",
+   "fieldtype": "Select",
+   "label": "Khi",
+   "options": "Bị chặn\nXong bước\nMở lần thứ",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "dieu_kien",
+   "fieldtype": "Data",
+   "label": "Điều kiện",
+   "in_list_view": 1,
+   "description": "Bị chặn: đoạn chữ trong thông điệp/chữ ký · Xong bước: số thứ tự bước · Mở lần thứ: một số"
+  },
+  {
+   "fieldname": "noi_dung",
+   "fieldtype": "Small Text",
+   "label": "Nội dung",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "chi_vao",
+   "fieldtype": "Data",
+   "label": "Chỉ vào (selector, không bắt buộc)"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-20 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Feedback Widget",
+ "name": "Feedback Playbook Tip",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "istable": 1
+}
