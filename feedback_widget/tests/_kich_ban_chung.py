@@ -40,7 +40,9 @@ def kich_ban(man, chang=None, buoc=None, huong_dan=None, meo=None, ten=None):
 def don_dep():
 	for n in frappe.get_all("Feedback Mission", filters={"kich_ban": ["in", _kb()]}, pluck="name"):
 		frappe.delete_doc("Feedback Mission", n, force=True, ignore_permissions=True)
-	for n in frappe.get_all("Feedback Notice", filters={"kich_ban": ["in", _kb()]}, pluck="name"):
+	nguoi_thu = frappe.get_all("Feedback Notice User", filters={"user": ["in", [NGUOI_A, NGUOI_B]],
+	                           "parenttype": "Feedback Notice"}, pluck="parent")
+	for n in set(frappe.get_all("Feedback Notice", filters={"kich_ban": ["in", _kb()]}, pluck="name") + nguoi_thu):
 		frappe.db.delete("Feedback Notice Seen", {"thong_bao": n})
 		frappe.delete_doc("Feedback Notice", n, force=True, ignore_permissions=True)
 	for kb in _kb():
@@ -62,3 +64,16 @@ def _kb():
 
 def sau(luc, **kw):
 	return add_to_date(get_datetime(luc), **kw)
+
+
+def dat_cai_dat(**kv) -> dict:
+	"""Ghi thẳng `tabSingles` (như cai_dat.py đọc), trả giá trị cũ để khôi phục."""
+	cu = {}
+	for k, v in kv.items():
+		r = frappe.db.sql("SELECT value FROM `tabSingles` WHERE doctype='Feedback Settings' AND field=%s", k)
+		cu[k] = r[0][0] if r else None
+		frappe.db.sql("DELETE FROM `tabSingles` WHERE doctype='Feedback Settings' AND field=%s", k)
+		if v is not None:
+			frappe.db.sql("INSERT INTO `tabSingles` (doctype, field, value) VALUES ('Feedback Settings', %s, %s)", (k, v))
+	frappe.db.commit()
+	return cu

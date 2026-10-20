@@ -60,7 +60,7 @@ def cua_toi() -> list:
 
 
 @frappe.whitelist()
-def da_xem(thong_bao: str, da_bam: int = 0) -> dict:
+def da_xem(thong_bao: str, da_bam: int = 0, tam_hoan: int = 0) -> dict:
 	"""Đánh dấu ĐÃ XEM — chỉ gọi khi người dùng BẤM (xem thử / đóng), không phải khi nó
 	vừa hiện ra: thông báo biến mất vĩnh viễn vì người ta lướt qua thì bằng không có."""
 	user = frappe.session.user
@@ -77,7 +77,12 @@ def da_xem(thong_bao: str, da_bam: int = 0) -> dict:
 	else:
 		frappe.get_doc({"doctype": "Feedback Notice Seen", "thong_bao": thong_bao,
 		                "user": user, "xem_luc": now_datetime(),
-		                "da_bam": 1 if int(da_bam or 0) else 0}).insert(ignore_permissions=True)
+		                "da_bam": 1 if int(da_bam or 0) else 0,
+		                "tam_hoan": 1 if int(tam_hoan or 0) else 0}).insert(ignore_permissions=True)
+		# Thẻ nhắc của kịch bản màn: mở / "Để mai" / ✕ đổi trạng thái chống ồn (spec §7).
+		from feedback_widget.nhac import theo_da_xem
+
+		theo_da_xem(thong_bao, user, da_bam, tam_hoan)
 	frappe.db.commit()
 	return {"ok": True}
 
