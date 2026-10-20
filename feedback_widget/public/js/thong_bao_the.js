@@ -33,11 +33,11 @@
 
   function css(el, o) { for (var k in o) el.style[k] = o[k]; return el; }
 
-  function danhDau(ten, daBam) {
+  function danhDau(ten, daBam, tamHoan) {
     try {
       global.frappe.call({
         method: "feedback_widget.api.thong_bao.da_xem",
-        args: { thong_bao: ten, da_bam: daBam ? 1 : 0 },
+        args: { thong_bao: ten, da_bam: daBam ? 1 : 0, tam_hoan: tamHoan ? 1 : 0 },
         error: function () {},
       });
     } catch (_e) {}
@@ -138,6 +138,21 @@
         try { global.dispatchEvent(new HashChangeEvent("hashchange")); } catch (_e) {}
       };
       hang.appendChild(xem);
+    }
+
+    // Thẻ NHẮC của kịch bản màn (`loai_nhac`): "Để mai" hoãn tới giờ làm kế tiếp, không tính
+    // là bỏ qua (spec §7) — người bận hôm nay không bị đẩy dần tới "dừng nhắc hẳn".
+    if (tb.loai_nhac) {
+      var deMai = document.createElement("button");
+      deMai.type = "button";
+      deMai.textContent = "Để mai";
+      deMai.setAttribute("data-de-mai", "1");
+      css(deMai, {
+        background: "transparent", color: "#374151", border: "1px solid #d1d5db",
+        borderRadius: "7px", padding: "7px 12px", cursor: "pointer", fontSize: "13.5px", minHeight: "44px",
+      });
+      deMai.onclick = function () { danhDau(tb.name, false, true); dong(); };
+      hang.appendChild(deMai);
     }
 
     var dongNut = document.createElement("button");

@@ -75,6 +75,16 @@ class TestKichBanApi(FrappeTestCase):
 		self.assertEqual(frappe.db.count("Feedback Point", {"user": c.NGUOI_A, "ly_do": "Cảm nhận"}), 1)
 		self.assertFalse(frappe.db.exists("Feedback Comment", {"submitter_user": c.NGUOI_A}))
 
+	def test_cam_nhan_bo_qua_khong_diem_khong_hoi_lai(self):
+		frappe.set_user(c.NGUOI_A)
+		api.cua_toi(MAN)
+		r = api.cam_nhan(self.k.name, "lam-quen", "bo_qua")
+		self.assertEqual(r.get("bo_qua"), 1)
+		self.assertEqual(api.cam_nhan(self.k.name, "lam-quen", "👍").get("da_tra_loi"), 1,
+		                 "đã bỏ qua thì không hỏi lại chặng đó")
+		frappe.set_user("Administrator")
+		self.assertEqual(frappe.db.count("Feedback Point", {"user": c.NGUOI_A, "ly_do": "Cảm nhận"}), 0)
+
 	def test_cam_nhan_che_tao_gop_y_khong_thoa_buoc(self):
 		frappe.set_user(c.NGUOI_A)
 		r = api.cam_nhan(self.k.name, "lam-quen", "👎", "chậm quá", screen_id=MAN)

@@ -143,9 +143,11 @@ def huong_dan(kich_ban: str, trang_thai: str, the: int = 0) -> dict:
 @frappe.whitelist(methods=["POST"])
 def cam_nhan(kich_ban: str, chang: str, y: str, chu: str = "", screen_id: str = None) -> dict:
 	"""Thẻ "Màn này dùng thấy sao?" (spec §6.4). Chỉ 👍 không chữ ⇒ không tạo góp ý (khỏi
-	đẩy Telegram vì một cú chạm); 👎 hoặc có chữ ⇒ góp ý thật, đi đúng đường của widget."""
+	đẩy Telegram vì một cú chạm); 👎 hoặc có chữ ⇒ góp ý thật, đi đúng đường của widget.
+	`y = "bo_qua"` ⇒ ghi là đã hỏi để không hỏi lại chặng đó, KHÔNG cộng điểm (bỏ qua mà
+	có điểm thì cú chạm "bỏ qua" thành cách lấy điểm rẻ nhất)."""
 	user = _toi()
-	if not _bat() or not user or y not in ("👍", "👎"):
+	if not _bat() or not user or y not in ("👍", "👎", "bo_qua"):
 		return {"ok": False}
 	k = frappe.get_doc("Feedback Playbook", kich_ban)
 	if chang not in [c.ma for c in k.chang]:
@@ -159,6 +161,8 @@ def cam_nhan(kich_ban: str, chang: str, y: str, chu: str = "", screen_id: str = 
 
 	frappe.db.set_value("Feedback Playbook Progress", p.name, "cam_nhan",
 	                    json.dumps(da, ensure_ascii=False), update_modified=False)
+	if y == "bo_qua":
+		return {"ok": True, "bo_qua": 1}
 	diem.ghi_diem(user, cint(cai_dat().get("diem_cam_nhan")), "Cảm nhận",
 	              f"Cảm nhận|{kich_ban}|{chang}|{user}", "Feedback Playbook", kich_ban)
 	ve = None
