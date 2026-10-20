@@ -10,3 +10,4 @@ feedback_widget.patches.v2_dong_bo_chu_ky_ve_va_so
 feedback_widget.patches.v3_gop_cai_dat_ve_mot_bang
 feedback_widget.patches.v4_gieo_lai_mac_dinh_sau_gop
 feedback_widget.patches.v5_chi_muc_su_kien
+feedback_widget.patches.v6_bu_diem_gop_y

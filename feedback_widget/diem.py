@@ -175,3 +175,28 @@ def kiem_huan_chuong_ngay(luc=None) -> dict:
 			if trao(user, "chuyen-can", f"chuyen-can|{bd[0]}-W{bd[1]:02d}|{user}"):
 				trao_moi += 1
 	return {"trao": trao_moi}
+
+
+# ---------------------------------------------------------------------------------------
+# Góp ý có ích / thành cải tiến
+# ---------------------------------------------------------------------------------------
+
+def theo_gop_y(ve) -> None:
+	"""Đưa điểm + huân chương của MỘT góp ý về đúng trạng thái `co_ich` / `thanh_cai_tien`.
+	Vé máy (`source='auto'`) không bao giờ được điểm. Gọi từ `on_update` của Feedback Comment;
+	KHÔNG được làm hỏng lượt lưu vé."""
+	try:
+		user = ve.get("submitter_user")
+		if ve.get("source") != "user" or not user or user in ("Guest", "Administrator"):
+			return
+		ct = cai_dat()
+		dat_diem(user, cint(ct["diem_co_ich"]), "Góp ý có ích", f"Góp ý có ích|{ve.name}|{user}",
+		         bool(cint(ve.get("co_ich"))), "Feedback Comment", ve.name)
+		cai_tien = bool(cint(ve.get("thanh_cai_tien")))
+		dat_diem(user, cint(ct["diem_cai_tien"]), "Góp ý thành cải tiến", f"Góp ý thành cải tiến|{ve.name}|{user}",
+		         cai_tien, "Feedback Comment", ve.name)
+		if cai_tien and ve.get("tag_type") in ("bug", "idea"):
+			ma = "mat-tinh" if ve.get("tag_type") == "bug" else "nguoi-goi-y"
+			trao(user, ma, f"{ma}|{ve.name}", "Feedback Comment", ve.name)
+	except Exception:
+		frappe.log_error(title=f"diem.theo_gop_y {ve.name}"[:140], message=frappe.get_traceback())
