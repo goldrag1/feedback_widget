@@ -143,6 +143,7 @@ def payload_cho_trinh_duyet(user: str = None, noi: str = "desk") -> dict:
         "hien_tag": int(ct.get("hien_tag") or 0),
         "cho_dinh_anh": int(ct.get("cho_dinh_anh") or 0),
         "giay_tu_dong_dong": int(ct.get("giay_tu_dong_dong") or 0),
+        "kb_bat": int(ct.get("kb_bat") or 0),
     }
 
 

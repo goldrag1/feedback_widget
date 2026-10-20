@@ -4,6 +4,12 @@ from frappe.utils import now_datetime
 
 
 class FeedbackComment(Document):
+    def before_insert(self):
+        # Góp ý sinh từ thẻ hỏi cảm nhận (api.kich_ban.cam_nhan) — KHÔNG thỏa bước "Góp ý
+        # trên màn", để một cú chạm không ăn cả điểm bước lẫn điểm cảm nhận.
+        if frappe.flags.get("fbw_tu_cam_nhan"):
+            self.tu_cam_nhan = 1
+
     def before_save(self):
         self._co_ich_theo_trang_thai()
         if self.is_new():

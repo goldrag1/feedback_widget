@@ -113,7 +113,25 @@ def ghi_lo(events=None, project: str = None):
         except Exception:
             bo_qua += 1
     frappe.db.commit()
+    _cham_kich_ban(nguoi, events)
     return {"ok": True, "nhan": nhan, "bo_qua": bo_qua}
+
+
+def _cham_kich_ban(nguoi, events) -> None:
+    """Kịch bản màn: lô sự kiện chạm màn có kịch bản thì chấm NỀN — người vừa làm xong một
+    bước thấy dấu ✓ ở lần mở thẻ kế tiếp, không phải đợi cron 15 phút. Không màn nào khớp
+    kịch bản thì không đẩy job nào (đa số lô)."""
+    try:
+        if not int(cai_dat().get("kb_bat") or 0):
+            return
+        from feedback_widget.kich_ban import kich_ban_cua_man
+
+        man = {str(e.get("screen_id") or "")[:140] for e in events[:TRAN_MOI_LUOT] if isinstance(e, dict)}
+        man = [m for m in man if m and kich_ban_cua_man(m)]
+        if man:
+            frappe.enqueue("feedback_widget.kich_ban.cham_theo_man", queue="short", user=nguoi, screen_ids=man)
+    except Exception:
+        frappe.log_error(title="feedback_widget su_kien → kich_ban", message=frappe.get_traceback())
 
 
 @frappe.whitelist(methods=["POST"])
