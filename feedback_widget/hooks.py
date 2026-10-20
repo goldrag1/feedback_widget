@@ -37,9 +37,15 @@ scheduler_events = {
     "cron": {
         # 15 phút/lần: đủ nhanh để người trực biết trong ca, đủ thưa để không phải
         # nghĩ về tải. Mốc đọc lưu ở db.set_global nên chạy lại không nhân đôi vé.
-        "*/15 * * * *": ["feedback_widget.tac_vu.bac_cau_error_log"],
+        "*/15 * * * *": [
+            "feedback_widget.tac_vu.bac_cau_error_log",
+            # Kịch bản màn: chấm trước, nhắc sau (nhắc đọc tiến độ vừa chấm). Cả hai tự
+            # thoát khi `kb_bat = 0`.
+            "feedback_widget.kich_ban.cham_tat_ca",
+            "feedback_widget.nhac.nhac_kich_ban",
+        ],
         # Tổng kết tự kiểm giờ trong hàm (cấu hình được, không đúc vào cron).
         "0 * * * *": ["feedback_widget.tac_vu.tong_ket_ngay"],
     },
-    "daily": ["feedback_widget.tac_vu.don_so_cu"],
+    "daily": ["feedback_widget.tac_vu.don_so_cu", "feedback_widget.diem.kiem_huan_chuong_ngay"],
 }
