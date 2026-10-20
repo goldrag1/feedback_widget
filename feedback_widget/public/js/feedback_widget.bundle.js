@@ -8,6 +8,7 @@
  */
 import "./feedback_widget_core.js";
 import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối vào 🔔
+import "./kich_ban_the.js";    // khai `window.FeedbackPlaybook` cho 🎯 / 🏅 / 🏆 (kịch bản màn)
 
 (function () {
   if (window.__FBW_FRAPPE_MOUNTED__) return;
@@ -176,6 +177,10 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
     // THIẾU cái nào thì lối này không hiện — không bao giờ mời người dùng vào ngõ cụt.
     dangKyLoiThongBao();
 
+    // Kịch bản màn (spec §5, §6): sau công tắc `kb_bat` của MÁY CHỦ — tắt thì không một
+    // request nào, không một lối vào nào.
+    dangKyKichBan();
+
     // Refresh widget's idea of the current screen on every Frappe route change
     try {
       window.frappe.router.on("change", function () {
@@ -342,6 +347,62 @@ import "./thong_bao_the.js";   // khai `window.FeedbackNotices.show` cho lối v
         if ((Date.now() - lanCuoi) / 1000 >= NHIP_QUAY_LAI_TAB_S) dem();
       });
     } catch (_e) {}
+  }
+
+  // ---------- kịch bản màn: hỏi máy chủ theo route, đăng ký 🎯 / 🏅 / 🏆 ----------
+  var NHIP_HOI_LAI_KB_MS = 30000;   // cùng một màn: hỏi lại tối đa 30 giây/lần
+  function dangKyKichBan() {
+    var ct = (window.frappe && window.frappe.boot && window.frappe.boot.feedback_widget) || {};
+    if (!ct.kb_bat || !window.FeedbackPlaybook) return;
+    var lanHoi = {}, dangHoi = false, soLanLoi = 0;
+    function phien() {
+      try { return sessionStorage.getItem("fbw_sid") || ""; } catch (_e) { return ""; }
+    }
+    function hoi(epBuoc) {
+      // Hai lỗi liền là rút: một tính năng phụ không được đổ 417 vào console mọi màn.
+      if (dangHoi || soLanLoi >= 2) return;
+      var man = currentRoute();
+      if (!man) return;
+      if (!epBuoc && lanHoi[man] && Date.now() - lanHoi[man] < NHIP_HOI_LAI_KB_MS) return;
+      lanHoi[man] = Date.now();
+      dangHoi = true;
+      window.frappe.call({
+        method: "feedback_widget.api.kich_ban.cua_toi",
+        args: { screen_id: man, phien: phien() },
+        type: "POST",
+        error: function () { dangHoi = false; soLanLoi += 1; },
+        callback: function (r) {
+          dangHoi = false;
+          soLanLoi = 0;
+          // Người dùng đã sang màn khác trong lúc chờ: dữ liệu này thuộc màn cũ, bỏ.
+          if (man !== currentRoute()) { hoi(); return; }
+          window.FeedbackPlaybook.nap((r && r.message) || null, man);
+        },
+      });
+    }
+    window.FeedbackPlaybook.lamMoi = function () { hoi(true); };
+    window.FeedbackWidget.registerAction({
+      id: "kich-ban-muc-tieu", icon: "🎯", label: "Mục tiêu trên màn này", order: 20,
+      // Mở menu cũng là một nhịp hỏi lại (có chặn 30 giây): người dùng vừa làm xong một bước
+      // thì mở menu là thấy số bước còn lại đúng.
+      enabled: function () { hoi(); return window.FeedbackPlaybook.coKichBan(); },
+      badge: function () { return window.FeedbackPlaybook.soBuocCon() || 0; },
+      onClick: function () { window.FeedbackPlaybook.moMucTieu(); },
+    });
+    window.FeedbackWidget.registerAction({
+      id: "kich-ban-thanh-tich", icon: "🏅", label: "Thành tích của tôi", order: 40,
+      onClick: function () { window.FeedbackPlaybook.moThanhTich(); },
+    });
+    window.FeedbackWidget.registerAction({
+      id: "kich-ban-bang-vang", icon: "🏆", label: "Bảng vàng", order: 50,
+      onClick: function () { window.FeedbackPlaybook.moBangVang(); },
+    });
+    try {
+      window.frappe.router.on("change", function () { window.setTimeout(hoi, 400); });
+    } catch (_e) {}
+    // App một-trang cắm vào desk đổi màn bằng hash, router của Frappe không biết.
+    window.addEventListener("hashchange", function () { window.setTimeout(hoi, 400); });
+    window.setTimeout(hoi, 1200);
   }
 
   // Poll for frappe.boot — desk init is async; bail after 30s of no boot
