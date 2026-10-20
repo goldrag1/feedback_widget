@@ -78,6 +78,19 @@ def tong_diem(user, chi_da_bao: bool = False, tu=None, den=None) -> int:
 	return cint(r[0][0])
 
 
+def bang_diem(tu=None, bo=()) -> list:
+	"""Tổng điểm từng người (đang bật, điểm > 0) từ `tu`, cao xuống thấp — MỘT định nghĩa cho
+	bảng vàng và mọi nơi xếp hạng (rà nợ §15: không viết SQL cộng điểm riêng ở API)."""
+	where, args = ["u.enabled = 1"], []
+	if bo:
+		where.append("p.user NOT IN %s"); args.append(tuple(bo))
+	if tu:
+		where.append("p.creation >= %s"); args.append(get_datetime(tu))
+	return frappe.db.sql(f"""SELECT p.user, u.full_name, SUM(p.diem) diem FROM `tabFeedback Point` p
+	                         JOIN tabUser u ON u.name = p.user WHERE {' AND '.join(where)}
+	                         GROUP BY p.user HAVING diem > 0 ORDER BY diem DESC""", args, as_dict=True)
+
+
 def nguong() -> list:
 	ct = cai_dat()
 	return [cint(ct["nguong_thanh_thao"]), cint(ct["nguong_key_user"]), cint(ct["nguong_dai_su"])]

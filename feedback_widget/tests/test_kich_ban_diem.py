@@ -75,3 +75,8 @@ class TestKichBanDiem(FrappeTestCase):
 		diem.kiem_huan_chuong_ngay("2026-10-15 10:00:00")
 		diem.kiem_huan_chuong_ngay("2026-10-16 10:00:00")
 		self.assertEqual(diem.huan_chuong_cua(c.NGUOI_A), {"chuyen-can": 1}, "4 tuần ⇒ một lần, chạy lại không trao thêm")
+
+
+def tearDownModule():
+	frappe.set_user("Administrator")
+	c.xoa_nguoi()

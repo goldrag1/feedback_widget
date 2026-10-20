@@ -246,13 +246,8 @@ def bang_vang(ky: str = "thang", cong_ty: str = None) -> dict | None:
 	user = _toi()
 	if not _bat() or not user:
 		return None
-	where, args = ["p.user NOT IN %s", "u.enabled = 1"], [tuple(khong_xep_hang()) or ("",)]
-	if ky == "thang":
-		d = getdate(now_datetime())
-		where.append("p.creation >= %s"); args.append(d.replace(day=1))
-	rows = frappe.db.sql(f"""SELECT p.user, u.full_name, SUM(p.diem) diem FROM `tabFeedback Point` p
-	                         JOIN tabUser u ON u.name = p.user WHERE {' AND '.join(where)}
-	                         GROUP BY p.user HAVING diem > 0 ORDER BY diem DESC""", args, as_dict=True)
+	tu = getdate(now_datetime()).replace(day=1) if ky == "thang" else None
+	rows = diem.bang_diem(tu=tu, bo=khong_xep_hang())
 	cty = cong_ty_cua([r.user for r in rows] + [user])
 	cua_toi = cty.get(user) or ""
 	loc = cua_toi if cong_ty is None else (None if cong_ty in ("", "__all__") else cong_ty)

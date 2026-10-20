@@ -77,3 +77,16 @@ def dat_cai_dat(**kv) -> dict:
 			frappe.db.sql("INSERT INTO `tabSingles` (doctype, field, value) VALUES ('Feedback Settings', %s, %s)", (k, v))
 	frappe.db.commit()
 	return cu
+
+
+def xoa_nguoi():
+	"""Gọi ở `tearDownModule` của mọi tệp test kịch bản: người thử không được ở lại site
+	(rà nợ §15 — đo mirror 20/10: hai tài khoản thu-kb-* sót lại sau các lượt chạy trước)."""
+	don_dep()
+	for u in (NGUOI_A, NGUOI_B):
+		if frappe.db.exists("User", u):
+			frappe.db.delete("Feedback Notice User", {"user": u})
+			frappe.db.delete("Feedback Mission Assignee", {"user": u})
+			frappe.db.delete("Feedback Playbook Progress", {"user": u})
+			frappe.delete_doc("User", u, force=True, ignore_permissions=True)
+	frappe.db.commit()

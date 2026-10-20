@@ -1,7 +1,7 @@
 /**
  * Nghiệm thu KỊCH BẢN MÀN bằng Chrome thật (plan Task 9 Step 2, spec §14).
  *
- * Dựng một kịch bản thử trên màn `chot-ton` cho một người thử MỚI, rồi đo đúng những gì người
+ * Dựng một kịch bản thử trên danh sách ToDo cho một người thử MỚI, rồi đo đúng những gì người
  * đó thấy: thẻ hướng dẫn tự bật, viền sáng ôm đúng phần tử; thẻ trỏ selector hỏng vẫn hiện
  * (chỉ chữ) và ghi `Feedback Event kind='loi'`; menu nút 💬 có 🎯/🏅/🏆; thẻ mục tiêu liệt kê
  * bước; thẻ nhắc có nút "Để mai", bấm thì biến mất và máy chủ ghi tạm hoãn; khay không tràn ngang
@@ -28,7 +28,10 @@ const KEY = process.env.FBW_KEY || `${process.env.HOME}/.ssh/vps_das`;
 const GOC = process.env.FBW_URL || (MAY === "local" ? "http://localhost:8003" : `https://${HOST}`);
 const PROBE = `${process.env.HOME}/.claude/skills/frappe-headed-qa/prod-probe.sh`;
 const NGUOI = "thu-kb-nghiem-thu@kiemthu.local";
-const TEN_KB = "THU-KB-NGHIEM-THU chot-ton";
+const TEN_KB = "THU-KB-NGHIEM-THU todo";
+// Màn THỬ là danh sách ToDo — mọi người dùng desk đều mở được, và không kịch bản thật nào
+// chiếm nó. Dùng `chot-ton` thì đụng kịch bản thật đợt 1 (luật chống chồng lấn chặn ngay).
+const MAN = "List/ToDo*", DUONG = "/app/todo";
 
 const tmp = mkdtempSync(join(tmpdir(), "fbw-kb-nt-"));
 function py(code) {
@@ -52,16 +55,16 @@ if not frappe.db.exists("User", U):
     frappe.get_doc({"doctype": "User", "email": U, "first_name": "Thử kịch bản", "send_welcome_email": 0,
                     "user_type": "System User"}).insert(ignore_permissions=True)
 frappe.get_doc("User", U).add_roles("Stock Manager")
-# Màn chot-ton (hts_multi_company) đòi người dùng có công ty — thiếu thì trang tự 403 và console
-# đỏ vì lý do không phải của widget.
+# Site cách ly công ty (hts_multi_company) đòi người dùng có công ty — thiếu thì trang tự 403
+# và console đỏ vì lý do không phải của widget.
 cty = frappe.db.get_default("company") or frappe.get_all("Company", pluck="name", limit=1)[0]
 if not frappe.db.exists("User Permission", {"user": U, "allow": "Company"}):
     frappe.get_doc({"doctype": "User Permission", "user": U, "allow": "Company", "for_value": cty,
                     "apply_to_all_doctypes": 1}).insert(ignore_permissions=True)
-k = frappe.get_doc({"doctype": "Feedback Playbook", "ten": TEN, "man": "chot-ton", "duong_dan": "/app/chot-ton",
+k = frappe.get_doc({"doctype": "Feedback Playbook", "ten": TEN, "man": ${JSON.stringify(MAN)}, "duong_dan": ${JSON.stringify(DUONG)},
     "dang_bat": 1, "ly_do": "Phép đo tự động — không phải kịch bản thật.",
     "chang": [{"ma": "lam-quen", "ten": "Làm quen", "thu_tu": 1, "loai": "Một lần", "diem": 30}],
-    "buoc": [{"chang": "lam-quen", "mo_ta": "Mở trang Chốt tồn", "loai": "Mở màn", "so_lan": 1},
+    "buoc": [{"chang": "lam-quen", "mo_ta": "Mở danh sách việc", "loai": "Mở màn", "so_lan": 1},
              {"chang": "lam-quen", "mo_ta": "Gửi một góp ý ngay trên trang", "loai": "Góp ý trên màn", "so_lan": 1}],
     "huong_dan": [{"thu_tu": 1, "tieu_de": "Đây là nút góp ý", "noi_dung": "Thẻ này phải có viền sáng.",
                    "chi_vao": "#khong-co-1; .fbw-fab"},
@@ -70,7 +73,7 @@ k = frappe.get_doc({"doctype": "Feedback Playbook", "ten": TEN, "man": "chot-ton
 frappe.get_doc({"doctype": "Feedback Point", "user": U, "diem": 10, "ly_do": "Bước",
                 "khoa": "THU-NT|" + k.name, "nguon_doctype": "Feedback Playbook", "nguon_name": k.name}).insert(ignore_permissions=True)
 tb = frappe.get_doc({"doctype": "Feedback Notice", "tieu_de": "THU-NT nhắc: còn 1 bước", "noi_dung": "Phép đo tự động.",
-    "duong_dan": "/app/chot-ton", "pham_vi": "Một người", "cac_nguoi": [{"user": U}], "dang_bat": 1,
+    "duong_dan": ${JSON.stringify(DUONG)}, "pham_vi": "Một người", "cac_nguoi": [{"user": U}], "dang_bat": 1,
     "bat_dau": now_datetime(), "kich_ban": k.name, "loai_nhac": "N1"}).insert(ignore_permissions=True)
 sid = secrets.token_hex(20)
 frappe.db.sql("""INSERT INTO tabSessions (user,sid,sessiondata,ipaddress,lastupdate,status)
@@ -95,10 +98,11 @@ for dt, f in (("Feedback Point", "user"), ("Feedback Badge Award", "user"), ("Fe
     frappe.db.delete(dt, {f: U})
 if frappe.db.exists("User", U):
     frappe.delete_doc("User", U, force=True, ignore_permissions=True)
-frappe.db.sql("DELETE FROM tabSingles WHERE doctype='Feedback Settings' AND field='kb_bat'")
 cu = ${JSON.stringify(kbCu)}
-if cu not in (None, "NONE"):
-    frappe.db.sql("INSERT INTO tabSingles (doctype, field, value) VALUES ('Feedback Settings','kb_bat',%s)", cu)
+if cu is not None:          # null = phần dựng hỏng trước khi đọc được giá trị cũ ⇒ không đụng công tắc
+    frappe.db.sql("DELETE FROM tabSingles WHERE doctype='Feedback Settings' AND field='kb_bat'")
+    if cu != "NONE":
+        frappe.db.sql("INSERT INTO tabSingles (doctype, field, value) VALUES ('Feedback Settings','kb_bat',%s)", cu)
 frappe.db.commit(); frappe.clear_cache()
 print("CON_LAI:", frappe.db.count("Feedback Playbook", {"ten": ${JSON.stringify(TEN_KB)}}),
       frappe.db.count("Sessions", {"user": U}), frappe.db.exists("User", U) or 0)
@@ -123,7 +127,7 @@ try {
     const page = await ctx.newPage();
     page.on("pageerror", (e) => loi.push(`[${w}] PAGEERROR: ${e}`));
     page.on("console", (m) => { if (m.type() === "error") loi.push(`[${w}] CONSOLE: ${m.text()}`); });
-    await page.goto(`${GOC}/app/chot-ton`, { waitUntil: "commit", timeout: 90000 });
+    await page.goto(`${GOC}${DUONG}`, { waitUntil: "commit", timeout: 90000 });
     await page.waitForFunction(() => window.frappe && frappe.boot && window.FeedbackPlaybook, null, { timeout: 90000 });
     return { ctx, page };
   }

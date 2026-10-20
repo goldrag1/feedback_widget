@@ -80,16 +80,43 @@ def can_bao(ve) -> tuple:
 	return True, ""
 
 
+def _gop_thuong(ve) -> str:
+	"""Kịch bản màn: điểm + huân chương CỦA CHÍNH VÉ NÀY (do `diem.theo_gop_y` vừa ghi ngay
+	trước trong `on_update`) đi chung một thẻ với lời báo đã xử lý, rồi đánh dấu đã báo — nếu
+	không thì cùng một việc tới tay người gõ thành HAI thẻ cùng lúc (thẻ này + thẻ chúc mừng
+	của widget). Vé không được báo (người đóng chính là người gõ…) thì điểm vẫn chưa báo và
+	thẻ chúc mừng gánh việc đó."""
+	user = ve.get("owner")
+	if not frappe.db.table_exists("Feedback Point") or not user:
+		return ""
+	diem = frappe.get_all("Feedback Point", filters={"user": user, "da_bao": 0, "nguon_doctype": "Feedback Comment",
+	                                                 "nguon_name": ve.name}, fields=["name", "diem"])
+	hc = frappe.get_all("Feedback Badge Award", filters={"user": user, "da_bao": 0, "nguon_doctype": "Feedback Comment",
+	                                                     "nguon_name": ve.name}, fields=["name", "huan_chuong"])
+	tong = sum(frappe.utils.cint(d.diem) for d in diem)
+	if tong <= 0 and not hc:
+		return ""
+	from feedback_widget.diem import DANH_MUC_HUAN_CHUONG
+
+	phan = [f"+{tong} điểm"] if tong > 0 else []
+	phan += [DANH_MUC_HUAN_CHUONG.get(h.huan_chuong, h.huan_chuong) for h in hc]
+	for dt, ds in (("Feedback Point", diem), ("Feedback Badge Award", hc)):
+		for r in ds:
+			frappe.db.set_value(dt, r.name, "da_bao", 1, update_modified=False)
+	return "🎉 " + " · ".join(phan) + " — cảm ơn góp ý có ích."
+
+
 def bao_ve_da_xu_ly(ve) -> str | None:
 	"""Dựng thẻ thông báo cho người gõ vé. Trả tên thẻ, hoặc None nếu không báo."""
 	nen, _vi_sao = can_bao(ve)
 	if not nen:
 		return None
 	ly_do = _ly_do(ve)
+	thuong = _gop_thuong(ve)
 	tb = frappe.get_doc({
 		"doctype": "Feedback Notice",
 		"tieu_de": _tieu_de(ve, ly_do),
-		"noi_dung": ly_do,
+		"noi_dung": ly_do + (f"\n{thuong}" if thuong else ""),
 		"duong_dan": _duong_dan(ve),
 		"pham_vi": "Một người",
 		"nguon_ve": ve.name,
