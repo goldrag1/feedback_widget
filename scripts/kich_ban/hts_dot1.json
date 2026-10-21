@@ -91,7 +91,7 @@
       ],
       "buoc": [
         {"chang": "lam-quen", "mo_ta": "Mở Hộp thư", "loai": "Mở màn"},
-        {"chang": "lam-quen", "mo_ta": "Gửi một tin trả lời", "loai": "Gọi máy chủ", "endpoint": "tro_ly_ke_toan.hop_thu.api.gui"},
+        {"chang": "lam-quen", "mo_ta": "Gửi một tin trả lời", "loai": "Gọi máy chủ", "endpoint": "omni_channel.api.gui"},
         {"chang": "thanh-thao", "mo_ta": "Tạo đơn mua từ hội thoại (+ Tạo đơn mua)", "loai": "Bấm nút", "nut": "hop-thu::+ Tạo đơn mua"},
         {"chang": "thanh-thao", "mo_ta": "Gửi một góp ý ngay trên Hộp thư", "loai": "Góp ý trên màn"}
       ],
