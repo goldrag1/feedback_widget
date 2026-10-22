@@ -1,0 +1,36 @@
+{
+  "ghi_chu": "Đợt 2 — HTS, 22/10/2026: màn Dự phóng bán hàng tuần (my_custom_app page du-phong-ban-hang). Selector đọc từ public/js/du_phong/toolbar.js + ai.js. Không giao việc: hướng dẫn tự bật cho mọi người mở màn lần đầu.",
+  "kich_ban": [
+    {
+      "ten": "Dự phóng bán hàng tuần",
+      "man": "du-phong-ban-hang",
+      "duong_dan": "/app/du-phong-ban-hang",
+      "ly_do": "Thay file Excel dự phóng: Sale gõ số bán dự kiến từng mặt hàng × ngày × kênh, chốt lại, bên mua lập đơn mua kế hoạch từ đó.",
+      "nguon": "my_custom_app page du-phong-ban-hang (22/10/2026)",
+      "huong_dan": [
+        {"tieu_de": "Chọn tuần", "noi_dung": "Mỗi tuần (thứ Hai → Chủ nhật) là một bảng dự phóng. Đổi tuần ở đây hoặc bằng ◀ ▶; chưa có tuần thì bấm «+ Tuần mới».", "chi_vao": ".dpbh-week; .dpbh-new-big"},
+        {"tieu_de": "Gõ số dự phóng", "noi_dung": "Mỗi dòng một mặt hàng, mỗi cột một ngày × kênh, số tính theo kg. Gõ xong là tự lưu. Ngày đã qua: số giữa ô là thực xuất kho, số xanh ở góc trên là số đã dự phóng.", "chi_vao": ".dpbh-grid"},
+        {"tieu_de": "Tìm và lọc", "noi_dung": "Gõ tên mặt hàng (không dấu cũng được), bỏ tick kênh không cần xem, hoặc ẩn mặt hàng trống cho gọn.", "chi_vao": ".dpbh-search"},
+        {"tieu_de": "Cơ hội bán hàng và AI", "noi_dung": "«Cơ hội bán hàng» liệt kê ngày rằm, lễ, sự kiện trong tuần và mặt hàng nên chuẩn bị. «AI đề xuất» gợi ý số theo lịch âm và dương — người bấm áp dụng thì chịu trách nhiệm con số.", "chi_vao": ".dpbh-btn-dip; .dpbh-btn-ai"},
+        {"tieu_de": "Chốt và lập đơn mua", "noi_dung": "Sales Manager bấm «Chốt cả tuần», hoặc tick vài mặt hàng rồi bấm «Chốt»; số đã chốt không sửa được nữa. Bên mua bấm «Lập đơn mua kế hoạch» để ra đơn mua nháp cho các mặt hàng đã chốt.", "chi_vao": ".dpbh-btn-lock; .dpbh-btn-plan; .dpbh-status"}
+      ],
+      "chang": [
+        {"ma": "lam-quen", "ten": "Làm quen", "thu_tu": 1, "loai": "Một lần"},
+        {"ma": "du-phong-tuan", "ten": "Dự phóng một tuần", "thu_tu": 2, "loai": "Một lần"}
+      ],
+      "buoc": [
+        {"chang": "lam-quen", "mo_ta": "Mở màn Dự phóng bán hàng", "loai": "Mở màn"},
+        {"chang": "lam-quen", "mo_ta": "Xem «Cơ hội bán hàng» của tuần", "loai": "Bấm nút", "nut": "du-phong-ban-hang::🗓 Cơ hội bán hàng*"},
+        {"chang": "lam-quen", "mo_ta": "Gửi một góp ý ngay trên màn", "loai": "Góp ý trên màn"},
+        {"chang": "du-phong-tuan", "mo_ta": "Gõ số dự phóng (tự lưu)", "loai": "Gọi máy chủ", "endpoint": "my_custom_app.du_phong.save_entries"},
+        {"chang": "du-phong-tuan", "mo_ta": "Chốt mặt hàng đã dự phóng", "loai": "Gọi máy chủ", "endpoint": "my_custom_app.du_phong.set_lock"}
+      ],
+      "meo": [
+        {"khi": "Bị chặn", "dieu_kien": "chỉ dành cho vai", "noi_dung": "Gõ số và chốt là việc của Sales Manager; lập đơn mua là việc của bên mua. Cần làm thì nhờ quản trị cấp vai."},
+        {"khi": "Bị chặn", "dieu_kien": "chưa chốt", "noi_dung": "Chỉ lập đơn mua cho mặt hàng đã chốt — nhờ Sales Manager tick mặt hàng rồi bấm «Chốt» trước."},
+        {"khi": "Bị chặn", "dieu_kien": "đã có dự phóng", "noi_dung": "Tuần này đã có bảng — chọn nó trong ô tuần thay vì tạo mới."}
+      ]
+    }
+  ],
+  "giao": []
+}
