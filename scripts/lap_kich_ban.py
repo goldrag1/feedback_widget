@@ -19,7 +19,7 @@ import json
 import os
 import sys
 
-TRUONG_KB = ("ten", "duong_dan", "ly_do", "nguon")
+TRUONG_KB = ("ten", "duong_dan", "ly_do", "nguon", "moi_tu")
 
 
 def _chuan(v):

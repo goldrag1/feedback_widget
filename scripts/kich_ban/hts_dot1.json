@@ -6,22 +6,26 @@
       "man": "chot-ton",
       "duong_dan": "/app/chot-ton",
       "ly_do": "Đếm kho cuối ngày, màn tự tính chênh lệch và chỉ ghi dòng lệch vào sổ — tồn trên máy đúng với kho thật.",
-      "nguon": "my_custom_app page chot-ton (19/10/2026)",
+      "nguon": "my_custom_app page chot-ton (19/10/2026); ghi qua chot_ton_ghi.create từ 22/10; ô Kho Thanh lý 28/10/2026",
+      "moi_tu": "2026-10-28 12:00:00",
       "huong_dan": [
         {"tieu_de": "Chọn kho", "noi_dung": "Mỗi lần chốt một kho. Danh sách mặt hàng lấy theo kho này.", "chi_vao": "#ct-wh"},
         {"tieu_de": "Gõ số đếm được", "noi_dung": "Chọn kho xong, danh sách hiện ở đây: gõ số thực tế vào ô «Đếm được». Đúng bằng sổ thì bấm «Khớp».", "chi_vao": ".ct-row .ct-qty; .ct-search; #ct-app .ct-empty"},
         {"tieu_de": "Lọc dòng lệch", "noi_dung": "Bấm «Lệch» để chỉ xem dòng khác sổ, «Chưa đếm» để làm nốt phần còn lại.", "chi_vao": ".ct-tools .ct-seg; #ct-app .ct-empty"},
-        {"tieu_de": "Xem lại & ghi sổ", "noi_dung": "Nút «Xem lại & ghi sổ» ở cuối màn: chỉ dòng lệch được ghi vào sổ kho. Chưa ghi thì số đã đếm vẫn được giữ trên máy này.", "chi_vao": ".ct-bar .ct-btn.pri; #ct-app .ct-sub"}
+        {"tieu_de": "Xem lại & ghi sổ", "noi_dung": "Nút «Xem lại & ghi sổ» ở cuối màn: chỉ dòng lệch được ghi vào sổ kho. Chưa ghi thì số đã đếm vẫn được giữ trên máy này.", "chi_vao": ".ct-bar .ct-btn.pri; #ct-app .ct-sub"},
+        {"tieu_de": "Mới: đếm luôn Kho Thanh lý", "moi": 1, "noi_dung": "Mỗi mặt hàng nay có hai ô: «Kho chính» và «Thanh lý» (hàng khách trả về). Đếm được ô nào gõ ô đó — ô trống là chưa đếm, giữ nguyên sổ. Một lần ghi sổ ra một phiếu chốt cho mỗi kho có lệch. +điểm khi chốt Kho Thanh lý lần đầu.", "chi_vao": ".ct-slot-t; .ct-row .ct-qty"}
       ],
       "chang": [
         {"ma": "lam-quen", "ten": "Làm quen", "thu_tu": 1, "loai": "Một lần"},
-        {"ma": "duy-tri", "ten": "Chốt mỗi ngày", "thu_tu": 2, "loai": "Duy trì", "chu_ky": "Ngày", "gio_han": "17:00:00", "hoi_cam_nhan": 0}
+        {"ma": "duy-tri", "ten": "Chốt mỗi ngày", "thu_tu": 2, "loai": "Duy trì", "chu_ky": "Ngày", "gio_han": "17:00:00", "hoi_cam_nhan": 0},
+        {"ma": "thanh-ly", "ten": "Chốt Kho Thanh lý", "thu_tu": 3, "loai": "Một lần"}
       ],
       "buoc": [
         {"chang": "lam-quen", "mo_ta": "Mở trang Chốt tồn", "loai": "Mở màn"},
-        {"chang": "lam-quen", "mo_ta": "Ghi một phiếu chốt tồn", "loai": "Gọi máy chủ", "endpoint": "my_custom_app.my_custom_app.chot_ton.create", "chap_nhan_chan": "đều khớp sổ"},
+        {"chang": "lam-quen", "mo_ta": "Ghi một phiếu chốt tồn", "loai": "Gọi máy chủ", "endpoint": "my_custom_app.my_custom_app.chot_ton_ghi.create", "chap_nhan_chan": "đều khớp sổ"},
         {"chang": "lam-quen", "mo_ta": "Gửi một góp ý ngay trên trang", "loai": "Góp ý trên màn"},
-        {"chang": "duy-tri", "mo_ta": "Chốt tồn trước 17:00", "loai": "Gọi máy chủ", "endpoint": "my_custom_app.my_custom_app.chot_ton.create", "chap_nhan_chan": "đều khớp sổ"}
+        {"chang": "duy-tri", "mo_ta": "Chốt tồn trước 17:00", "loai": "Gọi máy chủ", "endpoint": "my_custom_app.my_custom_app.chot_ton_ghi.create", "chap_nhan_chan": "đều khớp sổ"},
+        {"chang": "thanh-ly", "mo_ta": "Ghi sổ một lượt chốt có số Kho Thanh lý", "loai": "Bấm nút", "nut": "chot-ton:thanh-ly"}
       ],
       "meo": [
         {"khi": "Bị chặn", "dieu_kien": "đều khớp sổ", "noi_dung": "Mọi dòng đã khớp sổ thì không cần ghi phiếu — hôm nay coi như đã chốt xong."},

@@ -16,6 +16,7 @@
   "project",
   "nguon",
   "section_huong_dan",
+  "moi_tu",
   "huong_dan",
   "section_chang",
   "chang",
@@ -78,6 +79,12 @@
    "label": "Hướng dẫn lần đầu"
   },
   {
+   "fieldname": "moi_tu",
+   "fieldtype": "Datetime",
+   "label": "Có gì mới từ",
+   "description": "Đặt khi thêm thẻ «Có gì mới» (đánh dấu ở cột Mới). Mọi người đã xem hướng dẫn trước mốc này sẽ tự thấy lại MỘT lần các thẻ mới — kể cả người đã quen màn."
+  },
+  {
    "fieldname": "huong_dan",
    "fieldtype": "Table",
    "label": "Thẻ hướng dẫn",
@@ -114,7 +121,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-20 09:00:00.000000",
+ "modified": "2026-10-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Playbook",

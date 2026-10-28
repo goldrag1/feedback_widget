@@ -1,0 +1,70 @@
+{
+  "ghi_chu": "Đợt 3 — HTS, 28/10/2026: hàng khách trả → Kho Thanh lý (ma trận V2 số âm, mobile-delivery ô Khách trả), dòng «Hàng ở kho khác». Thẻ đều là «Có gì mới» (moi_tu) nên mọi người đã quen màn cũng thấy một lần. Sự kiện đo: DNMV2.ghiSuKien('hang_tra:go_so_am' | 'kho_khac:bat').",
+  "kich_ban": [
+    {
+      "ten": "Ma trận Phiếu giao V2",
+      "man": "delivery-note-matrix-v2",
+      "duong_dan": "/app/delivery-note-matrix-v2",
+      "moi_tu": "2026-10-28 12:00:00",
+      "ly_do": "Điền phiếu giao cho cả ngày trên một bảng; nay ghi luôn hàng khách trả về.",
+      "nguon": "my_custom_app dn_matrix_v2 + hang_tra.py (28/10/2026)",
+      "huong_dan": [
+        {
+          "tieu_de": "Mới: gõ số ÂM = hàng khách trả",
+          "moi": 1,
+          "chi_vao": "#dnmv2-grid .ag-center-cols-container",
+          "noi_dung": "Gõ -2 vào ô là ghi «khách trả 2» — ô hiện (2) đỏ đậm, số giao giữ nguyên (vd «10 (2)»). Số này điền sẵn vào ô «Khách trả» trên màn giao hàng điện thoại, và ngược lại. Ghi sổ phiếu ⇒ hàng trả tự nhập Kho Thanh lý. Xoá ô = xoá cả số giao lẫn số trả. +điểm lần đầu."
+        },
+        {
+          "tieu_de": "Mới: tồn thực tế không gồm Kho Thanh lý",
+          "moi": 1,
+          "chi_vao": "#v2-btn-display",
+          "noi_dung": "«Tồn kho thực tế» nay chỉ tính hàng bán được — không cộng Kho Thanh lý. Muốn xem hàng ở kho khác: Hiển thị → tick «Hiển thị thêm hàng ở kho khác», «↳ Chọn kho khác…» để chọn kho; rê chuột lên ô thấy số từng kho. +điểm lần bật đầu tiên."
+        }
+      ],
+      "chang": [
+        {
+          "ma": "chuc-nang-moi",
+          "ten": "Dùng chức năng mới (28/10)",
+          "thu_tu": 1,
+          "loai": "Một lần"
+        }
+      ],
+      "buoc": [
+        {
+          "chang": "chuc-nang-moi",
+          "mo_ta": "Gõ một số âm (hàng khách trả)",
+          "loai": "Bấm nút",
+          "nut": "hang_tra:go_so_am"
+        },
+        {
+          "chang": "chuc-nang-moi",
+          "mo_ta": "Bật dòng «Hàng ở kho khác»",
+          "loai": "Bấm nút",
+          "nut": "kho_khac:bat"
+        }
+      ],
+      "meo": []
+    },
+    {
+      "ten": "Giao hàng (điện thoại)",
+      "man": "mobile-delivery",
+      "duong_dan": "/app/mobile-delivery",
+      "moi_tu": "2026-10-28 12:00:00",
+      "ly_do": "Giao nhân viên ghi thực giao, khách trả, hỗ trợ ngay tại điểm giao.",
+      "nguon": "hotro_khuyenmai mobile-delivery + my_custom_app hang_tra.py (28/10/2026)",
+      "huong_dan": [
+        {
+          "tieu_de": "Mới: «Khách trả» về Kho Thanh lý",
+          "moi": 1,
+          "chi_vao": "",
+          "noi_dung": "Số kho gõ trước trên ma trận (số âm) đã điền sẵn vào ô «Khách trả» — kiểm lại và sửa theo thực tế. Phiếu ghi sổ thì hàng khách trả tự nhập Kho Thanh lý, không cần làm phiếu riêng. Mặt hàng chỉ có hàng trả hiện «Xuất kho 0»."
+        }
+      ],
+      "chang": [],
+      "buoc": [],
+      "meo": []
+    }
+  ],
+  "giao": []
+}

@@ -12,6 +12,7 @@
   "bat_dau",
   "huong_dan",
   "huong_dan_the",
+  "moi_da_xem",
   "chang_hien_tai",
   "buoc_xong",
   "chang_xong",
@@ -56,6 +57,12 @@
    "fieldname": "huong_dan_the",
    "fieldtype": "Int",
    "label": "Thẻ hướng dẫn đang đứng"
+  },
+  {
+   "fieldname": "moi_da_xem",
+   "fieldtype": "Datetime",
+   "label": "Đã xem «Có gì mới» lúc",
+   "read_only": 1
   },
   {
    "fieldname": "chang_hien_tai",
@@ -105,7 +112,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-20 09:00:00.000000",
+ "modified": "2026-10-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Playbook Progress",

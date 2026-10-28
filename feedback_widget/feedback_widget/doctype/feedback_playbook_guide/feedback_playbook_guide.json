@@ -11,6 +11,7 @@
   "tieu_de",
   "noi_dung",
   "chi_vao",
+  "moi",
   "vi_tri"
  ],
  "fields": [
@@ -40,6 +41,14 @@
    "in_list_view": 1
   },
   {
+   "fieldname": "moi",
+   "fieldtype": "Check",
+   "label": "Mới",
+   "in_list_view": 1,
+   "columns": 1,
+   "description": "Thẻ giới thiệu thay đổi: người đã quen màn chỉ thấy các thẻ này (một lần, sau mốc «Có gì mới từ»)."
+  },
+  {
    "fieldname": "vi_tri",
    "fieldtype": "Select",
    "label": "Vị trí",
@@ -49,7 +58,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-10-20 09:00:00.000000",
+ "modified": "2026-10-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Feedback Widget",
  "name": "Feedback Playbook Guide",

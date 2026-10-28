@@ -70,6 +70,14 @@ def cua_toi(screen_id: str = None, phien: str = None):
 
 	da_quen = _so_phien_truoc(user, k.man, p.creation, phien) >= cint(cai_dat().get("phien_da_quen"))
 	tu_bat = p.huong_dan == "Chưa xem" and not da_quen and bool(k.huong_dan)
+	the_moi = _the_moi_chua_xem(k, p)
+	cac_the = sorted(k.huong_dan, key=lambda h: cint(h.thu_tu))
+	the_dang_dung = cint(p.huong_dan_the)
+	trang_thai = p.huong_dan
+	if the_moi and not tu_bat:
+		# «Có gì mới»: người đã quen màn (hoặc đã xem hướng dẫn) chỉ thấy các thẻ MỚI, tự bật một lần. Người mới
+		# toanh vẫn đi trọn bộ (đã gồm thẻ mới). Xem xong/bỏ qua ⇒ huong_dan() đóng dấu moi_da_xem.
+		tu_bat, cac_the, the_dang_dung, trang_thai = True, the_moi, 0, "Chưa xem"
 
 	chang = []
 	for c in sorted(k.chang, key=lambda x: cint(x.thu_tu)):
@@ -115,9 +123,9 @@ def cua_toi(screen_id: str = None, phien: str = None):
 
 	return {
 		"kich_ban": ten, "ten": k.ten, "ly_do": k.ly_do, "duong_dan": k.duong_dan,
-		"huong_dan": {"tu_bat": tu_bat, "trang_thai": p.huong_dan, "the": cint(p.huong_dan_the),
+		"huong_dan": {"tu_bat": tu_bat, "trang_thai": trang_thai, "the": the_dang_dung, "co_gi_moi": bool(the_moi),
 		              "cac_the": [{"tieu_de": h.tieu_de, "noi_dung": h.noi_dung, "chi_vao": h.chi_vao,
-		                           "vi_tri": h.vi_tri} for h in sorted(k.huong_dan, key=lambda h: cint(h.thu_tu))]},
+		                           "vi_tri": h.vi_tri} for h in cac_the]},
 		"chang": chang,
 		"nhiem_vu": ({"ten": nv[0].name, "chang_muc_tieu": nv[0].chang_muc_tieu, "trang_thai": nv[0].trang_thai,
 		              "chuoi_muc_tieu": cint(nv[0].chuoi_muc_tieu),
@@ -129,14 +137,34 @@ def cua_toi(screen_id: str = None, phien: str = None):
 	}
 
 
+def _the_moi_chua_xem(k, p) -> list:
+	"""Thẻ «Có gì mới» (cột Mới) mà người này chưa xem kể từ mốc `moi_tu` của kịch bản; [] khi không có."""
+	if not k.get("moi_tu"):
+		return []
+	moi = sorted([h for h in k.huong_dan if cint(h.get("moi"))], key=lambda h: cint(h.thu_tu))
+	if not moi:
+		return []
+	if p.get("moi_da_xem") and get_datetime(p.moi_da_xem) >= get_datetime(k.moi_tu):
+		return []
+	return moi
+
+
 @frappe.whitelist(methods=["POST"])
 def huong_dan(kich_ban: str, trang_thai: str, the: int = 0) -> dict:
 	user = _toi()
 	if not _bat() or not user or trang_thai not in TRANG_THAI_HUONG_DAN:
 		return {"ok": False}
 	p = kb.tien_do(kich_ban, user, tao=True)
-	frappe.db.set_value("Feedback Playbook Progress", p.name,
-	                    {"huong_dan": trang_thai, "huong_dan_the": cint(the)}, update_modified=False)
+	k = frappe.get_doc("Feedback Playbook", kich_ban)
+	if _the_moi_chua_xem(k, p) and p.huong_dan in ("Đã xem", "Bỏ qua"):
+		# Đang đi lượt «Có gì mới»: chỉ đóng dấu đã xem phần mới, KHÔNG đè trạng thái/thẻ của bộ hướng dẫn đầy đủ.
+		if trang_thai in ("Đã xem", "Bỏ qua"):
+			frappe.db.set_value("Feedback Playbook Progress", p.name, "moi_da_xem", now_datetime(), update_modified=False)
+		return {"ok": True}
+	v = {"huong_dan": trang_thai, "huong_dan_the": cint(the)}
+	if trang_thai in ("Đã xem", "Bỏ qua"):
+		v["moi_da_xem"] = now_datetime()   # bộ đầy đủ đã gồm thẻ mới
+	frappe.db.set_value("Feedback Playbook Progress", p.name, v, update_modified=False)
 	return {"ok": True}
 
 

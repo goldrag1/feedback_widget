@@ -6,7 +6,7 @@
       "man": "du-phong-ban-hang",
       "duong_dan": "/app/du-phong-ban-hang",
       "ly_do": "Thay file Excel dự phóng: Sale gõ số bán dự kiến từng mặt hàng × ngày × kênh, chốt lại, bên mua lập đơn mua kế hoạch từ đó.",
-      "nguon": "my_custom_app page du-phong-ban-hang (22/10/2026)",
+      "nguon": "my_custom_app page du-phong-ban-hang (22/10/2026); Excel + thêm/bỏ mặt hàng 28/10/2026",
       "huong_dan": [
         {
           "tieu_de": "Chọn tuần",
@@ -32,6 +32,18 @@
           "tieu_de": "Chốt và lập đơn mua",
           "noi_dung": "Sales Manager bấm «Chốt cả tuần», hoặc tick vài mặt hàng rồi bấm «Chốt»; số đã chốt không sửa được nữa. Bên mua bấm «Lập đơn mua kế hoạch» để ra đơn mua nháp cho các mặt hàng đã chốt.",
           "chi_vao": ".dpbh-btn-lock; .dpbh-btn-plan; .dpbh-status"
+        },
+        {
+          "tieu_de": "Mới: Xuất Excel",
+          "noi_dung": "Tải đúng bảng đang xem (tuần, mặt hàng đang lọc, kênh đang bật) ra Excel định dạng sẵn: tiêu đề tuần, ngày âm lịch, tổng cộng, cố định cột tên hàng — gửi Zalo hay in ngay. +điểm lần xuất đầu tiên.",
+          "chi_vao": ".dpbh-btn-xlsx",
+          "moi": 1
+        },
+        {
+          "tieu_de": "Mới: thêm / bỏ mặt hàng",
+          "noi_dung": "«+ Mặt hàng» chọn một mã hàng để thêm vào danh mục dự phóng. Muốn bỏ: tick (các) dòng rồi bấm nút đỏ «✕ Bỏ … mặt hàng» — chỉ ẩn khỏi bảng ở mọi tuần, số cũ và đơn mua không mất; thêm lại là hiện lại. +điểm lần thêm đầu tiên.",
+          "chi_vao": ".dpbh-btn-add",
+          "moi": 1
         }
       ],
       "chang": [
@@ -45,6 +57,12 @@
           "ma": "du-phong-tuan",
           "ten": "Dự phóng một tuần",
           "thu_tu": 2,
+          "loai": "Một lần"
+        },
+        {
+          "ma": "chuc-nang-moi",
+          "ten": "Dùng chức năng mới (28/10)",
+          "thu_tu": 3,
           "loai": "Một lần"
         }
       ],
@@ -76,6 +94,18 @@
           "mo_ta": "Chốt mặt hàng đã dự phóng",
           "loai": "Gọi máy chủ",
           "endpoint": "my_custom_app.du_phong.set_lock"
+        },
+        {
+          "chang": "chuc-nang-moi",
+          "mo_ta": "Xuất bảng dự phóng ra Excel",
+          "loai": "Bấm nút",
+          "nut": "du-phong-ban-hang::*Xuất Excel*"
+        },
+        {
+          "chang": "chuc-nang-moi",
+          "mo_ta": "Thêm một mặt hàng dự phóng",
+          "loai": "Gọi máy chủ",
+          "endpoint": "my_custom_app.du_phong.add_product"
         }
       ],
       "meo": [
@@ -94,7 +124,8 @@
           "dieu_kien": "đã có dự phóng",
           "noi_dung": "Tuần này đã có bảng — chọn nó trong ô tuần thay vì tạo mới."
         }
-      ]
+      ],
+      "moi_tu": "2026-10-28 12:00:00"
     }
   ],
   "giao": [

@@ -52,6 +52,28 @@ class TestKichBanApi(FrappeTestCase):
 		frappe.set_user(c.NGUOI_B)
 		self.assertTrue(api.cua_toi(MAN, phien="p-now")["chang"][0]["xong"])
 
+	def test_co_gi_moi_bat_lai_mot_lan_chi_the_moi(self):
+		"""Người đã xem hướng dẫn: thêm thẻ «Mới» + mốc moi_tu ⇒ tự bật lại MỘT lần, chỉ các thẻ mới."""
+		frappe.set_user(c.NGUOI_A)
+		api.cua_toi(MAN, phien="p-now")
+		api.huong_dan(self.k.name, "Đã xem", 0)
+		self.assertFalse(api.cua_toi(MAN, phien="p-now")["huong_dan"]["tu_bat"])
+		frappe.set_user("Administrator")
+		d = frappe.get_doc("Feedback Playbook", self.k.name)
+		d.append("huong_dan", {"thu_tu": 2, "tieu_de": "Mới: ô thứ hai", "noi_dung": "x", "moi": 1})
+		d.moi_tu = add_to_date(now_datetime(), seconds=1)
+		d.save(ignore_permissions=True)
+		frappe.set_user(c.NGUOI_A)
+		h = api.cua_toi(MAN, phien="p-now")["huong_dan"]
+		self.assertTrue(h["tu_bat"])
+		self.assertEqual([t["tieu_de"] for t in h["cac_the"]], ["Mới: ô thứ hai"])
+		frappe.db.set_value("Feedback Playbook", self.k.name, "moi_tu", add_to_date(now_datetime(), seconds=-5))
+		api.huong_dan(self.k.name, "Đã xem", 0)
+		h = api.cua_toi(MAN, phien="p-now")["huong_dan"]
+		self.assertFalse(h["tu_bat"], "xem xong phần mới thì không bật nữa")
+		self.assertEqual(len(h["cac_the"]), 2, "xem lại vẫn đủ bộ")
+		self.assertEqual(h["trang_thai"], "Đã xem")
+
 	def test_khong_co_kich_ban_va_tat(self):
 		frappe.set_user(c.NGUOI_A)
 		self.assertIsNone(api.cua_toi("man-khac")["kich_ban"])
