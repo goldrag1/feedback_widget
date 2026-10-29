@@ -1,0 +1,43 @@
+{
+  "ghi_chu": "Đợt 5 — HTS, 29/10/2026: màn So giá hệ thống (chưa từng có kịch bản) — kỳ Ngày + «So các ngày» (hotro_khuyenmai 4ccce90). Bước đo bằng lời gọi so_gia_api.get_comparison (mọi kỳ) và get_comparison_dates («So các ngày»).",
+  "kich_ban": [
+    {
+      "ten": "So giá hệ thống",
+      "man": "so-gia-he-thong",
+      "duong_dan": "/app/so-gia-he-thong",
+      "moi_tu": "2026-10-29 08:00:00",
+      "ly_do": "Xem giá PO cùng một mặt hàng giữa các hệ thống siêu thị, và giá một hệ thống đổi qua các ngày — thấy ngay chỗ lệch giá.",
+      "nguon": "hotro_khuyenmai page so-gia-he-thong (19/10/2026); kỳ Ngày + So các ngày 29/10/2026",
+      "huong_dan": [
+        {
+          "tieu_de": "Cột là các hệ thống siêu thị",
+          "moi": 0,
+          "chi_vao": "#sght-app .sg-bar",
+          "noi_dung": "Mỗi cột là một nhóm khách (AEON, WinMart…), mỗi ô là giá nhiều cửa hàng đặt nhất trong kỳ. Ô xanh/đỏ là giá thấp/cao hơn các nhóm khác, ô cam là khác đơn vị. Bấm «Nhóm so» để chọn và kéo thứ tự cột."
+        },
+        {
+          "tieu_de": "Mới: xem theo NGÀY",
+          "moi": 1,
+          "chi_vao": "#sght-app .sg-seg",
+          "noi_dung": "Chọn «Ngày» để so giá của đúng một ngày (‹ › sang ngày trước/sau, bấm vào ngày để chọn trên lịch). «Khoảng» để chọn từ ngày – đến ngày. +điểm lần đầu."
+        },
+        {
+          "tieu_de": "Mới: «So các ngày»",
+          "moi": 1,
+          "chi_vao": "#sght-app .sg-seg",
+          "noi_dung": "Chọn «So các ngày» rồi chọn MỘT nhóm khách: cột là từng ngày có đơn (bấm các ô ngày để thêm/bớt). Ô có ▲/▼ và số chênh so với ngày trước — thấy ngay ngày nào giá đổi."
+        }
+      ],
+      "chang": [
+        {"ma": "lam-quen", "ten": "Làm quen", "thu_tu": 1, "loai": "Một lần"}
+      ],
+      "buoc": [
+        {"chang": "lam-quen", "mo_ta": "Mở màn So giá", "loai": "Mở màn"},
+        {"chang": "lam-quen", "mo_ta": "Xem bảng so giá của một kỳ", "loai": "Gọi máy chủ", "endpoint": "hotro_khuyenmai.hotro_khuyenmai.so_gia_api.get_comparison"},
+        {"chang": "lam-quen", "mo_ta": "So giá một nhóm qua các ngày", "loai": "Gọi máy chủ", "endpoint": "hotro_khuyenmai.hotro_khuyenmai.so_gia_api.get_comparison_dates"}
+      ],
+      "meo": []
+    }
+  ],
+  "giao": []
+}
