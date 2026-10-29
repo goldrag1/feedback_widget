@@ -1,0 +1,130 @@
+{
+  "ghi_chu": "Đợt 7 — HTS 29/10 11:30: tìm/lọc danh sách + nút Dùng số biên bản. Giữ nguyên KB-0007 đọc từ prod.",
+  "kich_ban": [
+    {
+      "ten": "Giao hàng (điện thoại)",
+      "duong_dan": "/app/mobile-delivery",
+      "ly_do": "Giao nhân viên ghi thực giao, khách trả, hỗ trợ ngay tại điểm giao.",
+      "nguon": "hotro_khuyenmai mobile-delivery + bien_ban.py + to_ds.py (29/10/2026)",
+      "man": "mobile-delivery",
+      "moi_tu": "2026-10-29 11:30:00",
+      "huong_dan": [
+        {
+          "tieu_de": "Mới: «Khách trả» về Kho Thanh lý",
+          "moi": 0,
+          "chi_vao": "",
+          "noi_dung": "Số kho gõ trước trên ma trận (số âm) đã điền sẵn vào ô «Khách trả» — kiểm lại và sửa theo thực tế. Phiếu ghi sổ thì hàng khách trả tự nhập Kho Thanh lý, không cần làm phiếu riêng. Mặt hàng chỉ có hàng trả hiện «Xuất kho 0»."
+        },
+        {
+          "tieu_de": "Mới: chụp biên bản có chữ ký",
+          "moi": 0,
+          "chi_vao": "",
+          "noi_dung": "Mở phiếu → «📷 Chụp / chọn ảnh» → chụp phiếu giao hoặc phiếu nhận hàng có chữ ký, dấu của cửa hàng. Chụp được nhiều tấm, chụp thẳng, đủ sáng, thấy rõ cột số lượng. Bấm ảnh để phóng to, ✕ để xoá. +điểm lần đầu."
+        },
+        {
+          "tieu_de": "Mới: AI tự soát số với Thực giao",
+          "moi": 0,
+          "chi_vao": "",
+          "noi_dung": "Vài phút sau khi chụp, phiếu hiện ✓ khớp hoặc ⚠ lệch kèm dòng lệch («Biên bản: 9,5» dưới mặt hàng). Lệch vì gõ nhầm thì sửa Thực giao — hệ thống so lại ngay. Lệch thật (cửa hàng nhận thiếu) thì giữ số đúng như giấy. Quản lý cũng nhận báo khi lệch."
+        },
+        {
+          "tieu_de": "Mới: chụp TỜ DS giao hàng",
+          "moi": 0,
+          "chi_vao": "",
+          "noi_dung": "Giao xong cả tuyến thì chụp tờ DS giao hàng đã ghi tay ở thẻ «📄 Tờ DS giao hàng» đầu danh sách — một lần cho cả ngày, không chụp vào từng phiếu. AI tìm chỗ gạch bỏ, sửa số và so với Thực giao từng phiếu; phiếu nào lệch hiện «⚠ tờ DS lệch». +điểm lần đầu."
+        },
+        {
+          "tieu_de": "Biên bản: tên đơn vị và dòng trống",
+          "moi": 0,
+          "chi_vao": "",
+          "noi_dung": "Siêu thị ghi đơn vị khác tên kho (EACH, CÁI…) là bình thường — AI so con số. Dòng in sẵn mà trống hoặc bị gạch (hàng không giao) không bị tính lệch. Báo lệch giờ gửi vào nhóm Zalo của cửa hàng trong Hộp thư."
+        },
+        {
+          "tieu_de": "Mới: tìm cửa hàng + lọc phiếu",
+          "moi": 1,
+          "chi_vao": "#mobile-delivery-app input[type=search]",
+          "noi_dung": "Gõ tên cửa hàng (không cần dấu) để tìm nhanh; bấm nút lọc để xem riêng phiếu Chưa hoàn thành, ⚠ Lệch hay Chưa chụp biên bản. Đang lọc thì kéo-thả sắp tuyến tạm tắt."
+        },
+        {
+          "tieu_de": "Mới: «Dùng số biên bản»",
+          "moi": 1,
+          "chi_vao": "",
+          "noi_dung": "Biên bản lệch vì gõ nhầm Thực giao: bấm «Dùng 3,5» ngay dưới tên hàng (hoặc «Áp dụng số biên bản cho N dòng») — số trên giấy được ghi vào Thực giao, Khách trả và Hỗ trợ giữ nguyên. Kiểm lại số rồi mới bấm."
+        }
+      ],
+      "chang": [
+        {
+          "ma": "bien-ban",
+          "ten": "Chụp biên bản (29/10)",
+          "thu_tu": 1,
+          "loai": "Một lần"
+        },
+        {
+          "ma": "to-ds",
+          "ten": "Chụp tờ DS (29/10)",
+          "thu_tu": 2,
+          "loai": "Một lần"
+        }
+      ],
+      "buoc": [
+        {
+          "chang": "bien-ban",
+          "mo_ta": "Chụp biên bản cho một phiếu",
+          "loai": "Gọi máy chủ",
+          "endpoint": "hotro_khuyenmai.hotro_khuyenmai.bien_ban.tai_anh",
+          "so_lan": 1,
+          "so_ngay": 1
+        },
+        {
+          "chang": "bien-ban",
+          "mo_ta": "Chụp biên bản trong 3 ngày giao",
+          "loai": "Gọi máy chủ",
+          "endpoint": "hotro_khuyenmai.hotro_khuyenmai.bien_ban.tai_anh",
+          "so_lan": 3,
+          "so_ngay": 3
+        },
+        {
+          "chang": "to-ds",
+          "mo_ta": "Chụp tờ DS giao hàng của ngày",
+          "loai": "Gọi máy chủ",
+          "endpoint": "hotro_khuyenmai.hotro_khuyenmai.to_ds.tai_anh",
+          "so_lan": 1,
+          "so_ngay": 1
+        }
+      ],
+      "meo": [
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "không giao cho bạn",
+          "noi_dung": "Phiếu này giao cho NV khác. Chụp trên phiếu của mình, hoặc nhờ quản lý giao nhận gắn ảnh."
+        },
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "Ảnh quá lớn",
+          "noi_dung": "Chụp lại bằng máy ảnh điện thoại thay vì gửi tệp gốc — màn tự thu nhỏ ảnh chụp."
+        },
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "xoá bớt ảnh thừa",
+          "noi_dung": "Mỗi phiếu giữ tối đa số ảnh cho phép — xoá ảnh mờ hoặc trùng rồi chụp tiếp."
+        },
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "không có phiếu giao nào",
+          "noi_dung": "Tờ DS gắn với ngày đang chọn — đổi ngày ở góc trên cho đúng ngày in trên tờ rồi chụp lại."
+        },
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "Chỉ xem / chụp được tờ DS của chính mình",
+          "noi_dung": "Tờ DS của NV khác thì nhờ quản lý giao nhận chụp (quản lý chọn được NV)."
+        },
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "Phiếu đã ghi sổ",
+          "noi_dung": "Phiếu đã ghi sổ thì không sửa Thực giao trên điện thoại — báo kho sửa trên Ma trận phiếu giao."
+        }
+      ]
+    }
+  ],
+  "giao": []
+}
