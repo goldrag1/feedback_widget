@@ -1,0 +1,213 @@
+{
+  "ghi_chu": "Đợt 4 — HTS, 29/10/2026: biên bản giao hàng có chữ ký (mobile-delivery chụp ảnh, AI soát với Thực giao, góc ô ma trận V2, thẻ trong Hộp thư). Giữ nguyên mọi thẻ/chặng/bước đang có trên prod (đọc 29/10 08:20); thẻ cũ moi=0 để chỉ thẻ biên bản hiện «Có gì mới». Bước đo bằng lời gọi bien_ban.tai_anh.",
+  "kich_ban": [
+    {
+      "ten": "Giao hàng (điện thoại)",
+      "duong_dan": "/app/mobile-delivery",
+      "ly_do": "Giao nhân viên ghi thực giao, khách trả, hỗ trợ ngay tại điểm giao.",
+      "nguon": "hotro_khuyenmai mobile-delivery + bien_ban.py (29/10/2026)",
+      "man": "mobile-delivery",
+      "moi_tu": "2026-10-29 08:00:00",
+      "huong_dan": [
+        {
+          "tieu_de": "Mới: «Khách trả» về Kho Thanh lý",
+          "moi": 0,
+          "chi_vao": "",
+          "noi_dung": "Số kho gõ trước trên ma trận (số âm) đã điền sẵn vào ô «Khách trả» — kiểm lại và sửa theo thực tế. Phiếu ghi sổ thì hàng khách trả tự nhập Kho Thanh lý, không cần làm phiếu riêng. Mặt hàng chỉ có hàng trả hiện «Xuất kho 0»."
+        },
+        {
+          "tieu_de": "Mới: chụp biên bản có chữ ký",
+          "moi": 1,
+          "chi_vao": "",
+          "noi_dung": "Mở phiếu → «📷 Chụp / chọn ảnh» → chụp phiếu giao hoặc phiếu nhận hàng có chữ ký, dấu của cửa hàng. Chụp được nhiều tấm, chụp thẳng, đủ sáng, thấy rõ cột số lượng. Bấm ảnh để phóng to, ✕ để xoá. +điểm lần đầu."
+        },
+        {
+          "tieu_de": "Mới: AI tự soát số với Thực giao",
+          "moi": 1,
+          "chi_vao": "",
+          "noi_dung": "Vài phút sau khi chụp, phiếu hiện ✓ khớp hoặc ⚠ lệch kèm dòng lệch («Biên bản: 9,5» dưới mặt hàng). Lệch vì gõ nhầm thì sửa Thực giao — hệ thống so lại ngay. Lệch thật (cửa hàng nhận thiếu) thì giữ số đúng như giấy. Quản lý cũng nhận báo khi lệch."
+        }
+      ],
+      "chang": [
+        {
+          "ma": "bien-ban",
+          "ten": "Chụp biên bản (29/10)",
+          "thu_tu": 1,
+          "loai": "Một lần"
+        }
+      ],
+      "buoc": [
+        {
+          "chang": "bien-ban",
+          "mo_ta": "Chụp biên bản cho một phiếu",
+          "loai": "Gọi máy chủ",
+          "endpoint": "hotro_khuyenmai.hotro_khuyenmai.bien_ban.tai_anh",
+          "so_lan": 1,
+          "so_ngay": 1
+        },
+        {
+          "chang": "bien-ban",
+          "mo_ta": "Chụp biên bản trong 3 ngày giao",
+          "loai": "Gọi máy chủ",
+          "endpoint": "hotro_khuyenmai.hotro_khuyenmai.bien_ban.tai_anh",
+          "so_lan": 3,
+          "so_ngay": 3
+        }
+      ],
+      "meo": [
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "không giao cho bạn",
+          "noi_dung": "Phiếu này giao cho NV khác. Chụp trên phiếu của mình, hoặc nhờ quản lý giao nhận gắn ảnh."
+        },
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "Ảnh quá lớn",
+          "noi_dung": "Chụp lại bằng máy ảnh điện thoại thay vì gửi tệp gốc — màn tự thu nhỏ ảnh chụp."
+        },
+        {
+          "khi": "Bị chặn",
+          "dieu_kien": "xoá bớt ảnh thừa",
+          "noi_dung": "Mỗi phiếu giữ tối đa số ảnh cho phép — xoá ảnh mờ hoặc trùng rồi chụp tiếp."
+        }
+      ]
+    },
+    {
+      "ten": "Ma trận Phiếu giao V2",
+      "duong_dan": "/app/delivery-note-matrix-v2",
+      "ly_do": "Điền phiếu giao cho cả ngày trên một bảng; nay ghi luôn hàng khách trả về.",
+      "nguon": "my_custom_app dn_matrix_v2 core.js gocHtml (29/10/2026)",
+      "man": "delivery-note-matrix-v2",
+      "moi_tu": "2026-10-29 08:00:00",
+      "huong_dan": [
+        {
+          "tieu_de": "Mới: gõ số ÂM = hàng khách trả",
+          "moi": 0,
+          "chi_vao": "#dnmv2-grid .ag-center-cols-container",
+          "noi_dung": "Gõ -2 vào ô là ghi «khách trả 2» — ô hiện (2) đỏ đậm, số giao giữ nguyên (vd «10 (2)»). Số này điền sẵn vào ô «Khách trả» trên màn giao hàng điện thoại, và ngược lại. Ghi sổ phiếu ⇒ hàng trả tự nhập Kho Thanh lý. Xoá ô = xoá cả số giao lẫn số trả. +điểm lần đầu."
+        },
+        {
+          "tieu_de": "Mới: tồn thực tế không gồm Kho Thanh lý",
+          "moi": 0,
+          "chi_vao": "#v2-btn-display",
+          "noi_dung": "«Tồn kho thực tế» nay chỉ tính hàng bán được — không cộng Kho Thanh lý. Muốn xem hàng ở kho khác: Hiển thị → tick «Hiển thị thêm hàng ở kho khác», «↳ Chọn kho khác…» để chọn kho; rê chuột lên ô thấy số từng kho. +điểm lần bật đầu tiên."
+        },
+        {
+          "tieu_de": "Mới: số ở góc ô từ biên bản",
+          "moi": 1,
+          "chi_vao": "#dnmv2-grid .ag-center-cols-container",
+          "noi_dung": "Phiếu đã chụp biên bản có thêm số nhỏ ở góc ô: trái-trên = số AI đọc trên giấy (xanh khớp, đỏ lệch), phải-dưới = thực giao NV nhập, trái-dưới = số trên phiếu nhập kho của khách. Tải lại lưới để thấy số mới nhất."
+        }
+      ],
+      "chang": [
+        {
+          "ma": "chuc-nang-moi",
+          "ten": "Dùng chức năng mới (28/10)",
+          "thu_tu": 1,
+          "loai": "Một lần"
+        }
+      ],
+      "buoc": [
+        {
+          "chang": "chuc-nang-moi",
+          "mo_ta": "Gõ một số âm (hàng khách trả)",
+          "loai": "Bấm nút",
+          "nut": "hang_tra:go_so_am",
+          "so_lan": 1,
+          "so_ngay": 1
+        },
+        {
+          "chang": "chuc-nang-moi",
+          "mo_ta": "Bật dòng «Hàng ở kho khác»",
+          "loai": "Bấm nút",
+          "nut": "kho_khac:bat",
+          "so_lan": 1,
+          "so_ngay": 1
+        }
+      ],
+      "meo": []
+    },
+    {
+      "ten": "Hộp thư",
+      "duong_dan": "/app/hop-thu",
+      "ly_do": "Trả lời tin Zalo/Messenger của khách và NCC ngay trong ERP, thấy công nợ và đơn của họ bên cạnh.",
+      "nguon": "tro_ly_ke_toan page hop-thu",
+      "man": "hop-thu",
+      "moi_tu": "2026-10-29 08:00:00",
+      "huong_dan": [
+        {
+          "tieu_de": "Danh sách hội thoại",
+          "moi": 0,
+          "chi_vao": ".htx-list",
+          "noi_dung": "Tin của khách và NCC về đây. Lọc «Chưa trả lời» để làm việc đang chờ."
+        },
+        {
+          "tieu_de": "Trả lời ngay tại đây",
+          "moi": 0,
+          "chi_vao": ".htx-comp textarea; .htx-comp; .htx-thread; .htx",
+          "noi_dung": "Gõ / để chọn mẫu, Ctrl+Enter để gửi. Tab ghi chú chỉ người trong công ty thấy."
+        },
+        {
+          "tieu_de": "Đối tác & đơn",
+          "moi": 0,
+          "chi_vao": ".htx-side; .htx-thread; .htx",
+          "noi_dung": "Mở một hội thoại rồi gắn với khách/NCC: cột bên phải hiện công nợ, đơn gần đây và nút tạo đơn mua."
+        },
+        {
+          "tieu_de": "Mới: biên bản giao hàng của khách",
+          "moi": 1,
+          "chi_vao": "",
+          "noi_dung": "Hội thoại đã gắn khách hàng có thêm thẻ «Biên bản giao hàng» ở cột phải: ảnh phiếu có chữ ký 30 ngày gần nhất và kết quả soát (✓ khớp / ⚠ lệch). Bấm ảnh để phóng to, ‹ › để lật — trả lời khách về số đã giao mà không phải hỏi NV giao."
+        }
+      ],
+      "chang": [
+        {
+          "ma": "lam-quen",
+          "ten": "Làm quen",
+          "thu_tu": 1,
+          "loai": "Một lần"
+        },
+        {
+          "ma": "thanh-thao",
+          "ten": "Thành thạo",
+          "thu_tu": 2,
+          "loai": "Một lần"
+        }
+      ],
+      "buoc": [
+        {
+          "chang": "lam-quen",
+          "mo_ta": "Mở Hộp thư",
+          "loai": "Mở màn",
+          "so_lan": 1,
+          "so_ngay": 1
+        },
+        {
+          "chang": "lam-quen",
+          "mo_ta": "Gửi một tin trả lời",
+          "loai": "Gọi máy chủ",
+          "endpoint": "omni_channel.api.gui",
+          "so_lan": 1,
+          "so_ngay": 1
+        },
+        {
+          "chang": "thanh-thao",
+          "mo_ta": "Tạo đơn mua từ hội thoại (+ Tạo đơn mua)",
+          "loai": "Bấm nút",
+          "nut": "hop-thu::+ Tạo đơn mua",
+          "so_lan": 1,
+          "so_ngay": 1
+        },
+        {
+          "chang": "thanh-thao",
+          "mo_ta": "Gửi một góp ý ngay trên Hộp thư",
+          "loai": "Góp ý trên màn",
+          "so_lan": 1,
+          "so_ngay": 1
+        }
+      ],
+      "meo": []
+    }
+  ],
+  "giao": []
+}
