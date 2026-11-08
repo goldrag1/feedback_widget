@@ -43,3 +43,24 @@ class TestLocBanGhiChuaLuu(unittest.TestCase):
         """`newsletter-abc` hay `new-item` (thiếu đuôi 10 ký tự) không phải tên cục bộ."""
         self.assertFalse(_la_ban_ghi_chua_luu(
             "frappe.exceptions.DoesNotExistError: Newsletter new-item không tìm thấy", ""))
+
+
+class TestLocMayQuet(unittest.TestCase):
+    """Lượt dò của máy quét Internet (`/api/.env`…) không phải ai bị chặn — đo prod HTS 11/2026."""
+
+    def test_bo_duong_api_khong_ton_tai(self):
+        from feedback_widget.tac_vu import _la_may_quet
+        for duong in ("/api/.env", "/api/v1/.env", "/api/fs/read", "/api/system/fileView"):
+            tb = (f"  request = <Request 'https://erp.htsfood.com{duong}' [GET]>\n"
+                  "frappe.exceptions.DoesNotExistError:")
+            self.assertTrue(_la_may_quet(tb), duong)
+
+    def test_giu_method_va_loi_khac(self):
+        from feedback_widget.tac_vu import _la_may_quet
+        self.assertFalse(_la_may_quet(
+            "request = <Request 'https://x/api/method/frappe.desk.form.load.getdoc' [GET]>\n"
+            "frappe.exceptions.DoesNotExistError: Item X not found"))
+        self.assertFalse(_la_may_quet(
+            "request = <Request 'https://x/api/resource/Item/X' [GET]>\nfrappe.exceptions.DoesNotExistError:"))
+        self.assertFalse(_la_may_quet(
+            "request = <Request 'https://x/api/.env' [GET]>\nfrappe.exceptions.PermissionError:"))

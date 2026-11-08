@@ -163,6 +163,18 @@ def _la_ban_ghi_chua_luu(cau: str, method: str = "") -> bool:
     return bool(_CHUA_LUU.search(van)) and "DoesNotExistError" in van
 
 
+# Máy quét Internet dò `/api/.env`, `/api/fs/read`, `/api/system/fileView`… — Frappe không có
+# route ấy nên ném `DoesNotExistError` rỗng, Error Log ghi method="Error". Không ai bị chặn,
+# nhưng mỗi lượt dò đẻ một vé «Việc nền · Error» trên prod HTS (đo 01–09/11/2026: 8 vé, 87 lần,
+# đều Guest). Chỉ bỏ khi ĐÚNG cặp: đường `/api/<x>` không phải method/resource/v2 + DoesNotExist.
+_API_LA = re.compile(r"<Request '[^']*?/api/(?!method/|resource/|v2/)[^']*' \[")
+
+
+def _la_may_quet(error: str) -> bool:
+    error = error or ""
+    return "DoesNotExistError" in error and bool(_API_LA.search(error))
+
+
 def _ghi_su_kien_nen(r, cau: str, du_an: str) -> int:
     """Cầu Error Log cũng phải ghi vào SỔ THÔ, không chỉ đẻ vé.
 
@@ -265,7 +277,7 @@ def bac_cau_error_log():
         if "Session Stopped" in (r.method or "") or "Session Stopped" in cau:
             continue
         # Bản ghi chưa lưu bị hỏi quyền — tiếng ồn của desk, không phải ai bị chặn.
-        if _la_ban_ghi_chua_luu(cau, r.method):
+        if _la_ban_ghi_chua_luu(cau, r.method) or _la_may_quet(r.error):
             continue
         frappe.set_user("Administrator")
         try:
@@ -380,7 +392,7 @@ def khai_thac_lich_su(so_ngay: int = 30, that_su: int = 0):
         if "Session Stopped" in (r.method or "") or "Session Stopped" in cau:
             continue
         # Bản ghi chưa lưu bị hỏi quyền — tiếng ồn của desk, không phải ai bị chặn.
-        if _la_ban_ghi_chua_luu(cau, r.method):
+        if _la_ban_ghi_chua_luu(cau, r.method) or _la_may_quet(r.error):
             continue
         ck = _tinh_chu_ky(cau, r.method or "", "chan")
         g = nhom.setdefault(ck, {"so_lan": 0, "cau": cau, "method": r.method,
