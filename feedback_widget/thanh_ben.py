@@ -43,3 +43,25 @@ def don_va_bo_sung() -> dict:
 		frappe.db.commit()
 		frappe.cache.delete_key("bootinfo")
 	return ra
+
+
+def an_icon_desk() -> int:
+	"""Ẩn icon «Feedback» khỏi màn /desk ở MỌI site (anh Long, vé FB-2026-00101, 19/11/2026).
+
+	Icon do Frappe tự sinh từ Workspace «Feedback» (standard=0 nên migrate không dọn). Sổ góp ý vẫn vào được
+	bằng ô tìm kiếm / đường dẫn /app/feedback-comment; người dùng thường không cần lối này trên màn chính.
+	Ẩn chứ không xoá; chạy lại sau mỗi migrate vì Frappe có thể sinh lại icon."""
+	if not frappe.db.table_exists("Desktop Icon"):
+		return 0
+	ws = set(frappe.get_all("Workspace", filters={"module": MODULE}, pluck="name"))
+	ws |= set(frappe.get_all("Workspace Sidebar", filters={"module": MODULE}, pluck="name"))
+	ws.add("Feedback")
+	ten = frappe.get_all("Desktop Icon", filters={"hidden": 0, "link_to": ["in", list(ws)]}, pluck="name")
+	ten += [n for n in frappe.get_all("Desktop Icon", filters={"hidden": 0, "label": ["in", list(ws)]}, pluck="name") if n not in ten]
+	for n in ten:
+		frappe.db.set_value("Desktop Icon", n, "hidden", 1, update_modified=False)
+	if ten:
+		frappe.db.commit()
+		frappe.cache.delete_key("desktop_icons")
+		frappe.cache.delete_key("bootinfo")
+	return len(ten)
