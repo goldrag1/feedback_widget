@@ -187,8 +187,12 @@ def tien_do(kich_ban: str, user: str, tao: bool = True, luc=None):
 			"buoc_xong": "{}", "chang_xong": "{}", "duy_tri": "{}", "cam_nhan": "{}",
 		}).insert(ignore_permissions=True)
 	except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
-		return frappe.get_doc("Feedback Playbook Progress",
-		                      frappe.db.get_value("Feedback Playbook Progress", {"kich_ban": kich_ban, "user": user}))
+		# Lượt chấm khác vừa tạo dòng này: SELECT thường đọc ảnh chụp cũ của giao dịch (REPEATABLE READ) nên không
+		# thấy nó ⇒ đọc khoá (FOR UPDATE) để lấy bản đã commit mới nhất (FB-2026-15766).
+		ten = frappe.db.sql("""SELECT name FROM `tabFeedback Playbook Progress`
+		                       WHERE kich_ban = %s AND user = %s FOR UPDATE""", (kich_ban, user))
+		# for_update ở lại trên cờ của tài liệu ⇒ cả p.reload() trong cham() cũng đọc khoá, không rơi về ảnh chụp cũ.
+		return frappe.get_doc("Feedback Playbook Progress", ten[0][0], for_update=True)
 	return d
 
 
